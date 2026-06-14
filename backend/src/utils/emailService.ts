@@ -141,3 +141,36 @@ export const sendWelcomeEmail = async (userEmail: string, fullName: string, role
     
     await sendEmail(userEmail, subject, getHtmlTemplate('Welcome Aboard', content));
 };
+
+export const sendWhitelistInvitationEmail = async (email: string, fullName: string, role: string, appUrl: string = 'http://localhost:5173') => {
+    if (!email) return;
+
+    const subject = `Invitation to Join ProTrack-Auto (${role})`;
+    const content = `
+        <p>Hello <strong>${fullName}</strong>,</p>
+        <p>You have been whitelisted as a <strong>${role}</strong> in the ProTrack-Auto system.</p>
+        <p>Please visit the portal and click <strong>"Claim Account"</strong> on the login page to set up your password and access your dashboard.</p>
+        <br/>
+        <a href="${appUrl}" class="button" style="display: inline-block; padding: 10px 20px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Go to ProTrack-Auto</a>
+    `;
+
+    await sendEmail(email, subject, getHtmlTemplate('Action Required: Claim Your Account', content));
+};
+
+export const sendTopicApprovalEmail = async (studentEmails: string[], groupName: string, topicTitle: string, status: 'APPROVED' | 'REJECTED', comments?: string) => {
+    if (!studentEmails || studentEmails.length === 0) return;
+
+    const subject = `Topic Proposal ${status === 'APPROVED' ? 'Approved' : 'Rejected'}: ${topicTitle}`;
+    const statusColor = status === 'APPROVED' ? '#10b981' : '#ef4444';
+    
+    const content = `
+        <p>Hello Team <strong>${groupName}</strong>,</p>
+        <p>Your topic proposal for <strong>"${topicTitle}"</strong> has been reviewed by the Project Coordinator.</p>
+        <p>Status: <strong style="color: ${statusColor}">${status}</strong></p>
+        ${comments ? `<p><strong>Comments:</strong><br/><em style="color: #64748b;">"${comments}"</em></p>` : ''}
+        
+        ${status === 'REJECTED' ? '<p>Please log in to the system to submit your alternative topic proposals.</p>' : '<p>Congratulations! You can now proceed with your project logbooks and milestones.</p>'}
+    `;
+
+    await sendEmail(studentEmails, subject, getHtmlTemplate(`Topic ${status === 'APPROVED' ? 'Approved' : 'Rejected'}`, content));
+};

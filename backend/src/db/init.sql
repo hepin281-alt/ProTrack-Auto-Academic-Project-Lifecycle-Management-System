@@ -87,6 +87,7 @@ CREATE TABLE project_groups (
     group_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     group_name VARCHAR(255) UNIQUE NOT NULL,
     guide_id UUID REFERENCES faculty_profiles(faculty_id) ON DELETE SET NULL,
+    preferred_guide_id UUID REFERENCES faculty_profiles(faculty_id) ON DELETE SET NULL,
     status group_status DEFAULT 'FORMING',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -106,9 +107,13 @@ CREATE TABLE project_proposals (
     proposal_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     group_id UUID NOT NULL REFERENCES project_groups(group_id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
+    abstract TEXT,
+    objectives TEXT,
     domain_tags TEXT[] NOT NULL DEFAULT '{}',
+    technology_stack TEXT[] DEFAULT '{}',
     priority INT DEFAULT 1 CHECK (priority IN (1, 2, 3)),
-    status VARCHAR(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'REVISION_REQUESTED')),
+    status VARCHAR(20) DEFAULT 'PENDING',
+    approval_stage VARCHAR(50) DEFAULT 'PENDING',
     rejection_reason TEXT,
     is_approved BOOLEAN DEFAULT FALSE,
     plagiarism_score INT DEFAULT NULL,
@@ -213,12 +218,16 @@ CREATE INDEX idx_chat_announcement ON chat_messages(is_announcement);
 
 -- Create group_resources table
 CREATE TABLE group_resources (
-    resource_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    group_id UUID NOT NULL REFERENCES project_groups(group_id) ON DELETE CASCADE,
-    title VARCHAR(255) NOT NULL,
-    url VARCHAR(500) NOT NULL,
-    uploaded_by UUID REFERENCES student_profiles(student_id) ON DELETE SET NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    resource_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    group_id UUID REFERENCES project_groups(group_id) ON DELETE CASCADE,
+    title VARCHAR(100) NOT NULL,
+    url VARCHAR(500),
+    uploaded_by UUID REFERENCES users(user_id) ON DELETE SET NULL,
+    resource_type VARCHAR(20) DEFAULT 'LINK',
+    description TEXT,
+    category VARCHAR(50) DEFAULT 'General',
+    file_path VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_resources_group ON group_resources(group_id);
 
@@ -266,3 +275,126 @@ CREATE TABLE po_pso_mappings (
     updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(criterion_id, mapping_type, outcome_key)
 );
+
+-- Enforce: each group can have at most one proposal per priority (1, 2, 3)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_proposals_group_priority
+  ON project_proposals(group_id, priority);
+
+-- Per-stage decision history with comments / rejection reason
+CREATE TABLE IF NOT EXISTS topic_approvals (
+    approval_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    proposal_id   UUID NOT NULL REFERENCES project_proposals(proposal_id) ON DELETE CASCADE,
+    stage         VARCHAR(30) NOT NULL,          -- 'GUIDE' | 'COMMITTEE' | 'COORDINATOR'
+    decision      VARCHAR(20) NOT NULL,          -- 'APPROVED' | 'REJECTED'
+    decided_by    UUID REFERENCES users(user_id) ON DELETE SET NULL,
+    comments      TEXT,
+    rejection_reason TEXT,
+    plagiarism_score INT,
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_topic_approvals_proposal ON topic_approvals(proposal_id);
+CREATE INDEX IF NOT EXISTS idx_topic_approvals_stage    ON topic_approvals(stage);
+CREATE INDEX IF NOT EXISTS idx_topic_approvals_by       ON topic_approvals(decided_by);
+
+-- Allow querying "active" proposal per group (coordinator approved or currently progressing)
+CREATE INDEX IF NOT EXISTS idx_proposals_group_stage
+  ON project_proposals(group_id, approval_stage);
+-- ============================================================
+-- Migration 002: Smart Guide Allocation Engine
+-- ============================================================
+
+-- Student preference for a specific guide
+ALTER TABLE project_groups
+  ADD COLUMN IF NOT EXISTS preferred_guide_id UUID REFERENCES faculty_profiles(faculty_id) ON DELETE SET NULL;
+
+-- Guide performance ratings (submitted by coordinator post-semester)
+CREATE TABLE IF NOT EXISTS guide_ratings (
+    rating_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    guide_id    UUID NOT NULL REFERENCES faculty_profiles(faculty_id) ON DELETE CASCADE,
+    rated_by    UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    rating      NUMERIC(3,1) NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comments    TEXT,
+    academic_year VARCHAR(10) NOT NULL DEFAULT to_char(CURRENT_DATE, 'YYYY'),
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(guide_id, rated_by, academic_year)
+);
+CREATE INDEX IF NOT EXISTS idx_guide_ratings_guide ON guide_ratings(guide_id);
+
+-- Allocation audit log — every assignment/override/unassignment is recorded
+CREATE TABLE IF NOT EXISTS allocation_audit (
+    audit_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    group_id       UUID NOT NULL REFERENCES project_groups(group_id) ON DELETE CASCADE,
+    guide_id       UUID REFERENCES faculty_profiles(faculty_id) ON DELETE SET NULL,
+    action         VARCHAR(30) NOT NULL, -- 'AUTO_ASSIGNED' | 'MANUAL_OVERRIDE' | 'UNASSIGNED' | 'BATCH'
+    performed_by   UUID REFERENCES users(user_id) ON DELETE SET NULL,
+    score_breakdown JSONB,               -- snapshot of the scoring at time of allocation
+    notes          TEXT,
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_allocation_audit_group  ON allocation_audit(group_id);
+CREATE INDEX IF NOT EXISTS idx_allocation_audit_guide  ON allocation_audit(guide_id);
+CREATE INDEX IF NOT EXISTS idx_allocation_audit_action ON allocation_audit(action);
+-- ============================================================
+-- Migration 004: Milestone Management System
+-- ============================================================
+
+-- Global settings table (used by existing settings controller)
+CREATE TABLE IF NOT EXISTS global_settings (
+    key   VARCHAR(100) PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+-- Milestone definitions per batch year
+-- Coordinator configures these for every academic year
+CREATE TABLE IF NOT EXISTS milestones (
+    milestone_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    batch_year    INT NOT NULL,
+    code          VARCHAR(10) NOT NULL,  -- 'M1' ... 'M8'
+    label         VARCHAR(100) NOT NULL, -- 'Topic Selection', 'Synopsis' ...
+    description   TEXT,
+    deadline      DATE NOT NULL,
+    reminder_days INT NOT NULL DEFAULT 7, -- send reminder N days before deadline
+    sort_order    INT NOT NULL DEFAULT 1,
+    created_by    UUID REFERENCES users(user_id) ON DELETE SET NULL,
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (batch_year, code)
+);
+CREATE INDEX IF NOT EXISTS idx_milestones_batch ON milestones(batch_year);
+CREATE INDEX IF NOT EXISTS idx_milestones_deadline ON milestones(deadline);
+
+-- Per-group milestone completion status
+CREATE TABLE IF NOT EXISTS group_milestone_status (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    milestone_id  UUID NOT NULL REFERENCES milestones(milestone_id) ON DELETE CASCADE,
+    group_id      UUID NOT NULL REFERENCES project_groups(group_id) ON DELETE CASCADE,
+    status        VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    -- PENDING | SUBMITTED | APPROVED | REJECTED | OVERDUE
+    submitted_at  TIMESTAMP,
+    approved_at   TIMESTAMP,
+    approved_by   UUID REFERENCES users(user_id) ON DELETE SET NULL,
+    notes         TEXT,
+    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (milestone_id, group_id)
+);
+CREATE INDEX IF NOT EXISTS idx_gms_milestone ON group_milestone_status(milestone_id);
+CREATE INDEX IF NOT EXISTS idx_gms_group     ON group_milestone_status(group_id);
+CREATE INDEX IF NOT EXISTS idx_gms_status    ON group_milestone_status(status);
+
+-- Milestone reminder log (to avoid duplicate reminders)
+CREATE TABLE IF NOT EXISTS milestone_reminder_log (
+    log_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    milestone_id  UUID NOT NULL REFERENCES milestones(milestone_id) ON DELETE CASCADE,
+    group_id      UUID NOT NULL REFERENCES project_groups(group_id) ON DELETE CASCADE,
+    reminder_type VARCHAR(30) NOT NULL DEFAULT 'DEADLINE_APPROACHING',
+    -- DEADLINE_APPROACHING | OVERDUE
+    sent_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (milestone_id, group_id, reminder_type)  -- only one per type per pair
+);
+
+-- Seed default M1-M8 labels (coordinator can reconfigure deadlines)
+-- These are inserted with batch_year=0 as a template; real years get created via API
+INSERT INTO global_settings (key, value) VALUES 
+    ('current_batch_year', '2024'),
+    ('milestone_reminder_enabled', 'true')
+ON CONFLICT (key) DO NOTHING;

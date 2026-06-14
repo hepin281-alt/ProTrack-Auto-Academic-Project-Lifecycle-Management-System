@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { AppShell } from '../../layouts/AppShell';
 import { useAuthStore } from '../../store/authStore';
 import { api } from '../../lib/apiClient';
-import { X, ChevronRight, Users, BookOpen, CheckCircle2, Clock, Zap, BarChart2 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import { X, ChevronRight, Users, BookOpen, CheckCircle2, Clock, Zap, BarChart2, AlertCircle } from 'lucide-react';
+import { BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
 interface Group {
     group_id: string;
@@ -36,6 +36,15 @@ const DUMMY_PENDING: Logbook[] = [
     { log_id: 'lb1', week_number: 8, work_summary: 'Integrated face recognition model with 92% accuracy. Fixed memory leak in video stream.', guide_status: 'PENDING' },
     { log_id: 'lb2', week_number: 7, work_summary: 'Implemented WebSocket server for real-time collaboration. Tested with 5 concurrent users.', guide_status: 'PENDING' },
     { log_id: 'lb3', week_number: 6, work_summary: 'Designed REST API with Express. Added JWT auth middleware and rate limiting.', guide_status: 'PENDING' },
+];
+
+const DUMMY_ACTIVITY_DATA = [
+    { week: 'W1', completed: 2, pending: 5 },
+    { week: 'W2', completed: 5, pending: 8 },
+    { week: 'W3', completed: 9, pending: 6 },
+    { week: 'W4', completed: 15, pending: 4 },
+    { week: 'W5', completed: 22, pending: 3 },
+    { week: 'W6', completed: 28, pending: 2 },
 ];
 
 export const GuideDashboardNew: React.FC = () => {
@@ -150,6 +159,57 @@ export const GuideDashboardNew: React.FC = () => {
                 })}
             </div>
 
+            {/* Needs Attention Feed (Prioritized) */}
+            <div className="mb-8 rounded-2xl bg-white/[0.04] border border-orange-500/[0.15] overflow-hidden shadow-[0_0_15px_rgba(249,115,22,0.05)]">
+                <div className="p-5 border-b border-white/[0.06] bg-orange-500/[0.02]">
+                    <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                        <AlertCircle size={15} className="text-orange-400" />
+                        Needs Attention
+                    </h2>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead>
+                            <tr className="border-b border-white/[0.06]">
+                                {['Group', 'Item Type', 'Details', 'Submitted', 'Action'].map(h => (
+                                    <th key={h} className="text-left py-3 px-5 text-[10px] font-bold text-white/30 uppercase tracking-widest">{h}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {pendingLogbooks.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="text-center py-12 text-white/25 text-sm">
+                                        You're all caught up! 🎉
+                                    </td>
+                                </tr>
+                            ) : (
+                                pendingLogbooks.map((logbook) => (
+                                    <tr key={logbook.log_id} className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+                                        <td className="py-4 px-5 text-sm text-white/80 font-medium">{(logbook as any).group_name || 'Group'}</td>
+                                        <td className="py-4 px-5 text-sm">
+                                            <span className="flex items-center gap-1.5 text-xs text-purple-300 bg-purple-500/10 px-2 py-1 rounded-md w-max">
+                                                <BookOpen size={12} /> Logbook W{logbook.week_number}
+                                            </span>
+                                        </td>
+                                        <td className="py-4 px-5 text-xs text-white/50 max-w-[200px] truncate">{logbook.work_summary}</td>
+                                        <td className="py-4 px-5 text-sm text-white/40">2 hours ago</td>
+                                        <td className="py-4 px-5">
+                                            <button
+                                                onClick={() => handleReviewClick(logbook, 'group-1')}
+                                                className="flex items-center gap-1 text-xs font-bold text-orange-400 hover:text-orange-300 transition-colors bg-orange-500/10 hover:bg-orange-500/20 px-3 py-1.5 rounded-lg"
+                                            >
+                                                Review Now <ChevronRight size={13} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             {/* Group Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 {groups.map((group, i) => (
@@ -195,82 +255,70 @@ export const GuideDashboardNew: React.FC = () => {
                 ))}
             </div>
 
-            {/* Pending Reviews */}
-            <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] overflow-hidden">
-                <div className="p-5 border-b border-white/[0.06]">
-                    <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                        <BookOpen size={15} className="text-purple-400" />
-                        Pending Logbook Reviews
-                    </h2>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="border-b border-white/[0.06]">
-                                {['Group', 'Week', 'Submitted', 'Status', 'Action'].map(h => (
-                                    <th key={h} className="text-left py-3 px-5 text-[10px] font-bold text-white/30 uppercase tracking-widest">{h}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {pendingLogbooks.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5} className="text-center py-12 text-white/25 text-sm">
-                                        No pending reviews 🎉
-                                    </td>
-                                </tr>
-                            ) : (
-                                pendingLogbooks.map((logbook) => (
-                                    <tr key={logbook.log_id} className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors">
-                                        <td className="py-4 px-5 text-sm text-white/80 font-medium">{(logbook as any).group_name || 'Group'}</td>
-                                        <td className="py-4 px-5 text-sm text-white/60">Week {logbook.week_number}</td>
-                                        <td className="py-4 px-5 text-sm text-white/40">2 hours ago</td>
-                                        <td className="py-4 px-5">
-                                            <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                                                Pending
-                                            </span>
-                                        </td>
-                                        <td className="py-4 px-5">
-                                            <button
-                                                onClick={() => handleReviewClick(logbook, 'group-1')}
-                                                className="flex items-center gap-1 text-xs font-semibold text-purple-400 hover:text-purple-300 transition-colors"
-                                            >
-                                                Review <ChevronRight size={13} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
             {/* Analytics Section */}
-            {analytics.length > 0 && (
-                <div className="mt-8 rounded-2xl bg-white/[0.04] border border-white/[0.08] overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {/* Logbooks Approved Bar Chart */}
+                {analytics.length > 0 && (
+                    <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] overflow-hidden">
+                        <div className="p-5 border-b border-white/[0.06]">
+                            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                                <BarChart2 size={15} className="text-blue-400" />
+                                Approvals by Group
+                            </h2>
+                        </div>
+                        <div className="p-5 h-[250px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={analytics} margin={{ top: 10, right: 30, left: -20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                                    <XAxis dataKey="group_name" stroke="rgba(255,255,255,0.5)" fontSize={10} tickLine={false} axisLine={false} />
+                                    <YAxis stroke="rgba(255,255,255,0.5)" fontSize={10} tickLine={false} axisLine={false} allowDecimals={false} />
+                                    <RechartsTooltip 
+                                        cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                                        contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                                    />
+                                    <Bar dataKey="approved_logbooks" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Approved Logbooks" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                )}
+
+                {/* Task Activity Area Chart */}
+                <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] overflow-hidden">
                     <div className="p-5 border-b border-white/[0.06]">
                         <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                            <BarChart2 size={15} className="text-blue-400" />
-                            Group Performance Analytics (Logbooks Approved)
+                            <Zap size={15} className="text-emerald-400" />
+                            Global Task Activity Burnup
                         </h2>
                     </div>
-                    <div className="p-5 h-[300px] w-full">
+                    <div className="p-5 h-[250px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={analytics} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
-                                <XAxis dataKey="group_name" stroke="rgba(255,255,255,0.5)" fontSize={12} tickLine={false} axisLine={false} />
-                                <YAxis stroke="rgba(255,255,255,0.5)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                            <AreaChart data={DUMMY_ACTIVITY_DATA} margin={{ top: 10, right: 30, left: -20, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                    </linearGradient>
+                                    <linearGradient id="colorPending" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
+                                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                                <XAxis dataKey="week" stroke="rgba(255,255,255,0.5)" fontSize={10} tickLine={false} axisLine={false} />
+                                <YAxis stroke="rgba(255,255,255,0.5)" fontSize={10} tickLine={false} axisLine={false} />
                                 <RechartsTooltip 
-                                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                                     contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                                 />
-                                <Bar dataKey="approved_logbooks" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Approved Logbooks" />
-                            </BarChart>
+                                <Area type="monotone" dataKey="completed" stroke="#10b981" fillOpacity={1} fill="url(#colorCompleted)" name="Completed Tasks" />
+                                <Area type="monotone" dataKey="pending" stroke="#f59e0b" fillOpacity={1} fill="url(#colorPending)" name="Pending Tasks" />
+                            </AreaChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
-            )}
+            </div>
+
+
 
             {/* Review Slide Panel */}
             {reviewPanel.isOpen && reviewPanel.logbook && (

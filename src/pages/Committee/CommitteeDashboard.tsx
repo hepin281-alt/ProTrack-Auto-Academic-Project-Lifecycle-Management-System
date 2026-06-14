@@ -138,14 +138,16 @@ export const CommitteeDashboard: React.FC = () => {
                             className="w-full flex items-center justify-between p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.07] hover:border-white/[0.12] transition-all group"
                         >
                             <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg">
+                                <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg relative">
+                                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
+                                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-gray-900" />
                                     <FileText size={14} className="text-white" />
                                 </div>
                                 <div className="text-left">
-                                    <p className="text-sm font-semibold text-white group-hover:text-blue-300 transition-colors">
-                                        View Evaluations
+                                    <p className="text-sm font-semibold text-white group-hover:text-blue-300 transition-colors flex items-center gap-2">
+                                        Start Evaluation Session
                                     </p>
-                                    <p className="text-xs text-white/40">Review project assessments</p>
+                                    <p className="text-xs text-white/40">Enter live grading panel mode</p>
                                 </div>
                             </div>
                             <ChevronRight size={16} className="text-white/40 group-hover:text-white/70 transition-colors" />

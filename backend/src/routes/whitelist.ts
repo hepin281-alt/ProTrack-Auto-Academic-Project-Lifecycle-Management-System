@@ -24,6 +24,13 @@ router.get(
     whitelistController.getWhitelist
 );
 
+router.post(
+    '/student',
+    authenticateRequest,
+    authorize('COORDINATOR'),
+    whitelistController.addStudentToWhitelist
+);
+
 // ---- Faculty Whitelist ----
 
 router.post(
@@ -34,11 +41,32 @@ router.post(
     whitelistController.uploadFacultyWhitelist
 );
 
+router.post(
+    '/faculty',
+    authenticateRequest,
+    authorize('COORDINATOR'),
+    whitelistController.addFacultyToWhitelist
+);
+
 router.get(
     '/faculty',
     authenticateRequest,
     authorize('COORDINATOR'),
     whitelistController.getFacultyWhitelist
+);
+
+router.delete(
+    '/student/:id',
+    authenticateRequest,
+    authorize('COORDINATOR'),
+    whitelistController.deleteStudentFromWhitelist
+);
+
+router.delete(
+    '/faculty/:id',
+    authenticateRequest,
+    authorize('COORDINATOR'),
+    whitelistController.deleteFacultyFromWhitelist
 );
 
 export default router;

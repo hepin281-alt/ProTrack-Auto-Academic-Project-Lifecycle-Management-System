@@ -3,7 +3,7 @@ import { AppShell } from '../../layouts/AppShell';
 import { useAuthStore } from '../../store/authStore';
 import { api } from '../../lib/apiClient';
 import { Users, BookOpen, AlertOctagon, TrendingUp, Sparkles, Activity, Zap, Download, Filter, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
-import { BarChart, Bar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, PieChart, Pie, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { motion } from 'framer-motion';
 
 // Dummy data for charts until Phase 5
@@ -24,6 +24,14 @@ const radarData = [
   { subject: 'PO5', A: 85, fullMark: 150 },
   { subject: 'PO6', A: 65, fullMark: 150 },
 ];
+
+const cycleData = [
+  { name: 'Phase 1 (Ideation)', value: 15 },
+  { name: 'Phase 2 (Implementation)', value: 45 },
+  { name: 'Phase 3 (Testing)', value: 25 },
+  { name: 'Phase 4 (Final)', value: 15 },
+];
+const COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b'];
 
 interface ComplianceRecord {
     group_id: string;
@@ -216,16 +224,45 @@ export const CoordinatorDashboardNew: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="p-6 rounded-2xl border border-white/10 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 shadow-sm flex flex-col lg:flex-row gap-6 items-center backdrop-blur-sm">
-                    <div className="w-16 h-16 rounded-2xl bg-indigo-500/20 flex items-center justify-center shrink-0">
-                        <Sparkles className="w-8 h-8 text-indigo-400" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <div className="p-6 rounded-2xl border border-white/10 bg-white/5 shadow-sm flex flex-col backdrop-blur-sm">
+                        <h3 className="text-xl font-bold mb-2 text-white flex items-center gap-2"><Activity className="w-5 h-5 text-emerald-400" /> Project Cycle Health</h3>
+                        <p className="text-sm text-white/50 mb-6">Distribution of groups across project lifecycle phases.</p>
+                        <div className="flex-1 min-h-[300px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={cycleData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                        labelLine={false}
+                                    >
+                                        {cycleData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip contentStyle={{ backgroundColor: 'rgba(9, 9, 11, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
-                    <div className="flex-1">
-                        <h3 className="text-xl font-bold mb-2 text-white">AI Coordinator Insights</h3>
-                        <p className="text-white/70">
-                            The system has detected that you have <strong className="text-white">{stats.unassigned}</strong> groups waiting for a guide. 
-                            Head over to the <strong className="text-white">Allocations</strong> tab to assign them to available faculty members based on their workload capacity.
-                        </p>
+
+                    <div className="p-6 rounded-2xl border border-white/10 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 shadow-sm flex flex-col gap-4 justify-center backdrop-blur-sm">
+                        <div className="w-16 h-16 rounded-2xl bg-indigo-500/20 flex items-center justify-center shrink-0">
+                            <Sparkles className="w-8 h-8 text-indigo-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold mb-2 text-white">AI Coordinator Insights</h3>
+                            <p className="text-white/70">
+                                The system has detected that you have <strong className="text-white">{stats.unassigned}</strong> groups waiting for a guide. 
+                                Head over to the <strong className="text-white">Allocations</strong> tab to assign them to available faculty members based on their workload capacity.
+                            </p>
+                        </div>
                     </div>
                 </div>
 

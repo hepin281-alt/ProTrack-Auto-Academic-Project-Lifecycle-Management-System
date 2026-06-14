@@ -82,8 +82,62 @@ export const api = {
         });
     },
 
+    autoGroupOrphans: (token: string) =>
+        apiCall<any>('/coordinator/auto-group', { token, method: 'POST' }),
+    
+    getFacultyList: (token: string) =>
+        apiCall<any[]>('/coordinator/faculty', { token, method: 'GET' }),
+        
+    updateGuideWorkload: (token: string, facultyId: string, maxWorkload: number) =>
+        apiCall<any>(`/coordinator/faculty/${facultyId}/workload`, {
+            token,
+            method: 'PATCH',
+            body: JSON.stringify({ max_workload: maxWorkload })
+        }),
+
     getWhitelist: (token: string) =>
         apiCall<any[]>('/coordinator/whitelist', { token, method: 'GET' }),
+        
+    deleteStudentFromWhitelist: (token: string, id: number) =>
+        apiCall<any>(`/coordinator/whitelist/student/${id}`, { token, method: 'DELETE' }),
+
+    uploadFacultyWhitelist: (token: string, file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return fetch(`${API_BASE}/coordinator/whitelist/faculty/upload`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        }).then(async r => {
+            if (!r.ok) {
+                const e = await r.json();
+                throw new Error(e.error || `HTTP ${r.status}`);
+            }
+            return r.json();
+        });
+    },
+    addStudentToWhitelist: (token: string, data: { prn_no: string, email: string, full_name: string }) =>
+        apiCall<any>('/coordinator/whitelist/student', {
+            method: 'POST',
+            token,
+            body: JSON.stringify(data)
+        }),
+
+    addFacultyToWhitelist: (token: string, data: { email: string, full_name: string, role: string }) =>
+        apiCall<any>('/coordinator/whitelist/faculty', {
+            method: 'POST',
+            token,
+            body: JSON.stringify(data)
+        }),
+
+    getFacultyWhitelist: (token: string) =>
+        apiCall<any[]>('/coordinator/whitelist/faculty', { token, method: 'GET' }),
+
+    deleteFacultyFromWhitelist: (token: string, id: number) =>
+        apiCall<any>(`/coordinator/whitelist/faculty/${id}`, { token, method: 'DELETE' }),
+
+    deleteRegisteredUser: (token: string, id: number) =>
+        apiCall<any>(`/coordinator/action/users/${id}`, { token, method: 'DELETE' }),
 
     // Group endpoints
     getGroups: (token: string, status?: string) => {
@@ -120,13 +174,21 @@ export const api = {
             body: JSON.stringify({ prn_no: prnNo })
         }),
 
-    getMembers: (token: string, groupId: string) =>
-        apiCall<any>(`/groups/${groupId}/members`, { token, method: 'GET' }),
+    getMembers: async (token: string, groupId: string) => {
+        const data = await apiCall<any>(`/groups/${groupId}/members`, { token, method: 'GET' });
+        return Array.isArray(data) ? data : (data.members || []);
+    },
 
     removeMember: (token: string, groupId: string, studentId: string) =>
         apiCall<any>(`/groups/${groupId}/members/${studentId}`, {
             token,
             method: 'DELETE'
+        }),
+
+    getAvailableStudents: (token: string) =>
+        apiCall<any[]>('/groups/available-students', {
+            token,
+            method: 'GET'
         }),
 
     // Proposal endpoints
@@ -327,23 +389,18 @@ export const api = {
     },
 
     // Schedule endpoints
-    createSchedule: (token: string, groupId: string, phase: string, presentationTime: string, venue: string) =>
-        apiCall<any>('/schedules', {
-            token,
-            method: 'POST',
-            body: JSON.stringify({
-                group_id: groupId,
-                phase,
-                presentation_time: presentationTime,
-                venue
-            })
-        }),
-        
     getSchedules: (token: string) =>
         apiCall<any[]>('/schedules', { token, method: 'GET' }),
 
     getSmartSlots: (token: string) =>
         apiCall<any>('/schedules/smart-slots', { token, method: 'GET' }),
+
+    createSchedule: (token: string, groupIds: string[], phase: string, presentationTime: string, venue: string, intervalMinutes: number = 0) =>
+        apiCall<any>('/schedules', {
+            token,
+            method: 'POST',
+            body: JSON.stringify({ group_ids: groupIds, phase, presentation_time: presentationTime, venue, interval_minutes: intervalMinutes })
+        }),
 
     // Tasks endpoints
     getTasks: (token: string, groupId: string) =>
@@ -367,12 +424,20 @@ export const api = {
     getGroupResources: (token: string, groupId: string) =>
         apiCall<any[]>(`/resources/${groupId}`, { token, method: 'GET' }),
         
-    createResource: (token: string, groupId: string, title: string, url: string) =>
-        apiCall<any>('/resources', {
-            token,
+    createResource: async (token: string, formData: FormData) => {
+        const response = await fetch(`${API_BASE}/resources`, {
             method: 'POST',
-            body: JSON.stringify({ group_id: groupId, title, url })
-        }),
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+        return response.json();
+    },
         
     getNote: (token: string) =>
         apiCall<any>('/notes', { token, method: 'GET' }),
@@ -496,6 +561,8 @@ export const api = {
             token, method: 'POST',
             body: JSON.stringify({ topics })
         }),
+
+
 
     getGroupTopics: (token: string, groupId: string) =>
         apiCall<any>(`/topics/group/${groupId}`, { token, method: 'GET' }),

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { AppShell } from '../../layouts/AppShell';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
-import { Users, FileText, CheckCircle2, XCircle, Loader2, Target, X, ShieldAlert } from 'lucide-react';
+import { Users, FileText, CheckCircle2, XCircle, Loader2, Target, X, ShieldAlert, Kanban } from 'lucide-react';
+import { GroupChat } from '../../components/GroupChat';
 
 interface Group {
     group_id: string;
@@ -20,23 +22,16 @@ interface Member {
     is_leader?: boolean;
 }
 
-interface Proposal {
-    proposal_id: string;
-    title: string;
-    domain_tags: string[];
-    is_approved: boolean | null;
-    plagiarism_score?: number | null;
-}
+// Removed Proposal interface as topics are handled in TopicWorkflow
 
 export const GuideGroups: React.FC = () => {
     const { token } = useAuthStore();
+    const navigate = useNavigate();
     const [groups, setGroups] = useState<Group[]>([]);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
     const [members, setMembers] = useState<Member[]>([]);
-    const [proposals, setProposals] = useState<Proposal[]>([]);
-    const [chatMessages, setChatMessages] = useState<any[]>([]);
-    const [activeTab, setActiveTab] = useState<'DETAILS' | 'CHAT'>('DETAILS');
-    const [newMessage, setNewMessage] = useState('');
+    const [tasks, setTasks] = useState<any[]>([]);
+    const [activeTab, setActiveTab] = useState<'DETAILS' | 'CHAT' | 'TASKS'>('DETAILS');
     
     const [isLoadingGroups, setIsLoadingGroups] = useState(false);
     const [isLoadingDetails, setIsLoadingDetails] = useState(false);
@@ -74,14 +69,12 @@ export const GuideGroups: React.FC = () => {
         setSelectedGroup(group);
         setIsLoadingDetails(true);
         try {
-            const [mList, pList, chatList] = await Promise.all([
+            const [mList, tList] = await Promise.all([
                 api.getMembers(token, group.group_id),
-                api.getProposals(token, group.group_id),
-                api.getGroupChat(token, group.group_id)
+                api.getTasks(token, group.group_id)
             ]);
             setMembers(Array.isArray(mList) ? mList : []);
-            setProposals(Array.isArray(pList) ? pList : []);
-            setChatMessages(Array.isArray(chatList) ? chatList : []);
+            setTasks(Array.isArray(tList) ? tList : []);
         } catch (err: any) {
             console.error(err);
             showToast('error', err.message || 'Failed to load details');
@@ -90,53 +83,7 @@ export const GuideGroups: React.FC = () => {
         }
     };
 
-    const handleProposalAction = async (proposalId: string, isApproved: boolean) => {
-        if (!token || !selectedGroup) return;
-        setIsActioning(true);
-        try {
-            await api.approveProposal(token, proposalId, isApproved);
-            showToast('success', `Proposal ${isApproved ? 'approved' : 'rejected'} successfully.`);
-            // Reload proposals
-            const pList = await api.getProposals(token, selectedGroup.group_id);
-            setProposals(Array.isArray(pList) ? pList : []);
-        } catch (err: any) {
-            console.error(err);
-            showToast('error', err.message || 'Failed to update proposal status');
-        } finally {
-            setIsActioning(false);
-        }
-    };
-
-    const handleCheckPlagiarism = async (proposalId: string) => {
-        if (!token || !selectedGroup) return;
-        setIsActioning(true);
-        try {
-            const data = await api.checkPlagiarism(token, proposalId);
-            showToast('success', `Plagiarism score: ${data.plagiarism_score}%`);
-            // Reload proposals
-            const pList = await api.getProposals(token, selectedGroup.group_id);
-            setProposals(Array.isArray(pList) ? pList : []);
-        } catch (err: any) {
-            console.error(err);
-            showToast('error', err.message || 'Failed to check plagiarism');
-        } finally {
-            setIsActioning(false);
-        }
-    };
-
-    const handleSendMessage = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!selectedGroup || !newMessage.trim() || !token) return;
-        try {
-            await api.sendGroupMessage(token, selectedGroup.group_id, newMessage.trim());
-            setNewMessage('');
-            // refresh chat
-            const chatData = await api.getGroupChat(token, selectedGroup.group_id);
-            setChatMessages(Array.isArray(chatData) ? chatData : []);
-        } catch (err) {
-            showToast('error', 'Failed to send message');
-        }
-    };
+    // Removed redundant proposal handlers
 
     return (
         <AppShell currentPage="/guide/groups">
@@ -152,14 +99,22 @@ export const GuideGroups: React.FC = () => {
                 </div>
             )}
 
-            <div className="mb-8 flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500">
-                    <Users size={18} className="text-white" />
+            <div className="mb-8 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500">
+                        <Users size={18} className="text-white" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-black text-white">My Groups</h1>
+                        <p className="text-white/40 text-sm">Review groups and manage progress</p>
+                    </div>
                 </div>
-                <div>
-                    <h1 className="text-2xl font-black text-white">My Groups</h1>
-                    <p className="text-white/40 text-sm">Review groups and project proposals</p>
-                </div>
+                <button
+                    onClick={() => navigate('/guide/topics')}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white text-sm font-bold rounded-xl hover:shadow-lg hover:shadow-purple-500/25 transition-all"
+                >
+                    <FileText size={16} /> Review Topics
+                </button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -227,6 +182,12 @@ export const GuideGroups: React.FC = () => {
                                 >
                                     Discussion
                                 </button>
+                                <button
+                                    onClick={() => setActiveTab('TASKS')}
+                                    className={`text-sm font-bold pb-2 border-b-2 transition-colors ${activeTab === 'TASKS' ? 'border-purple-500 text-purple-400' : 'border-transparent text-white/40 hover:text-white/70'}`}
+                                >
+                                    Tasks
+                                </button>
                             </div>
 
                             {activeTab === 'DETAILS' ? (
@@ -248,127 +209,80 @@ export const GuideGroups: React.FC = () => {
                                 ))}
                             </div>
 
-                            <div className="mb-4 flex items-center justify-between">
-                                <h3 className="text-sm font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
-                                    <FileText size={14} />
-                                    Project Proposals ({proposals.length})
-                                </h3>
-                            </div>
-
-                            <div className="space-y-4">
-                                {proposals.length === 0 && (
-                                    <div className="p-6 text-center text-white/30 text-sm font-semibold rounded-xl border border-white/[0.05] border-dashed">
-                                        No proposals submitted yet.
-                                    </div>
-                                )}
-                                {proposals.map(p => (
-                                    <div key={p.proposal_id} className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.08]">
-                                        <div className="flex items-start justify-between mb-4">
-                                            <h4 className="text-lg font-bold text-white max-w-[70%]">{p.title}</h4>
-                                            
-                                            {p.is_approved === true && (
-                                                <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs font-bold">
-                                                    <CheckCircle2 size={14} /> Approved
-                                                </span>
-                                            )}
-                                            {p.is_approved === false && (
-                                                <span className="flex items-center gap-1.5 px-3 py-1 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg text-xs font-bold">
-                                                    <XCircle size={14} /> Rejected
-                                                </span>
-                                            )}
-                                            {p.is_approved === null && (
-                                                <div className="flex items-center gap-2">
-                                                    <button
-                                                        onClick={() => handleProposalAction(p.proposal_id, true)}
-                                                        disabled={isActioning}
-                                                        className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-xs rounded-lg transition-all disabled:opacity-50 flex items-center gap-1"
-                                                    >
-                                                        <CheckCircle2 size={14} /> Approve
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleProposalAction(p.proposal_id, false)}
-                                                        disabled={isActioning}
-                                                        className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-lg transition-all disabled:opacity-50 flex items-center gap-1"
-                                                    >
-                                                        <X size={14} /> Reject
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                        
-                                        <div className="flex flex-wrap gap-2">
-                                            {p.domain_tags.map(tag => (
-                                                <span key={tag} className="px-2.5 py-1 bg-purple-500/10 text-purple-300 border border-purple-500/20 rounded-md text-[10px] font-bold uppercase tracking-wider">
-                                                    {tag}
-                                                </span>
-                                            ))}
-                                        </div>
-                                        
-                                        <div className="mt-4 pt-4 border-t border-white/[0.05] flex items-center justify-between">
-                                            {p.plagiarism_score !== undefined && p.plagiarism_score !== null ? (
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`px-2 py-1 text-xs font-bold rounded border ${
-                                                        p.plagiarism_score > 30 ? 'bg-red-500/10 text-red-400 border-red-500/20' : 
-                                                        p.plagiarism_score > 15 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 
-                                                        'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                                    }`}>
-                                                        {p.plagiarism_score}% Plagiarized
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-xs text-white/30 italic">Not checked yet</span>
-                                            )}
-                                            
-                                            <button
-                                                onClick={() => handleCheckPlagiarism(p.proposal_id)}
-                                                disabled={isActioning}
-                                                className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-lg text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1.5"
-                                            >
-                                                <ShieldAlert size={14} /> Run Plagiarism Check
-                                            </button>
-                                        </div>
-                                        </div>
-                                    ))}
-                                </div>
                                 </>
+                            ) : activeTab === 'CHAT' ? (
+                                <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-1 h-[600px]">
+                                    <GroupChat groupId={selectedGroup.group_id} />
+                                </div>
                             ) : (
-                                <div className="flex flex-col h-full min-h-[400px]">
-                                    <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2">
-                                        {chatMessages.length === 0 ? (
-                                            <div className="text-center text-white/30 text-xs mt-10">No messages yet. Start the discussion!</div>
-                                        ) : (
-                                            chatMessages.map(msg => (
-                                                <div key={msg.message_id} className={`flex flex-col ${msg.is_announcement ? 'items-center' : (msg.sender_email === useAuthStore.getState().user?.email ? 'items-end' : 'items-start')}`}>
-                                                    {msg.is_announcement ? (
-                                                        <div className="bg-orange-500/10 border border-orange-500/20 text-orange-300 px-4 py-2 rounded-xl text-xs max-w-[80%] text-center">
-                                                            <strong className="block mb-1 text-[10px] uppercase tracking-wider text-orange-400">Global Announcement</strong>
-                                                            {msg.content}
-                                                        </div>
-                                                    ) : (
-                                                        <div className={`max-w-[80%] p-3 rounded-2xl ${msg.sender_email === useAuthStore.getState().user?.email ? 'bg-purple-600 text-white rounded-tr-none' : 'bg-white/10 text-white/90 rounded-tl-none'}`}>
-                                                            <div className="flex justify-between items-baseline gap-4 mb-1">
-                                                                <span className="text-[10px] font-bold opacity-50">{msg.sender_email.split('@')[0]} ({msg.sender_role})</span>
-                                                                <span className="text-[9px] opacity-40">{new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                <div className="flex flex-col h-full min-h-[500px]">
+                                    {tasks.length > 0 && (
+                                        <div className="mb-6 bg-white/[0.02] border border-white/[0.05] p-5 rounded-2xl flex flex-col gap-3">
+                                            <div className="flex items-center justify-between text-sm">
+                                                <span className="font-bold text-white flex items-center gap-2">
+                                                    <Target size={16} className="text-purple-400" />
+                                                    Project Progress
+                                                </span>
+                                                <span className="text-white/50 font-semibold">
+                                                    {tasks.filter(t => t.status === 'DONE').length} of {tasks.length} tasks completed
+                                                </span>
+                                            </div>
+                                            <div className="h-3 w-full bg-black/40 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-1000 ease-out"
+                                                    style={{ width: `${Math.round((tasks.filter(t => t.status === 'DONE').length / tasks.length) * 100)}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+                                        {[
+                                            { id: 'TODO', label: 'To Do', color: 'border-blue-500/30 bg-blue-500/5', header: 'bg-blue-500/10 text-blue-300' },
+                                            { id: 'IN_PROGRESS', label: 'In Progress', color: 'border-amber-500/30 bg-amber-500/5', header: 'bg-amber-500/10 text-amber-300' },
+                                            { id: 'DONE', label: 'Done', color: 'border-emerald-500/30 bg-emerald-500/5', header: 'bg-emerald-500/10 text-emerald-300' }
+                                        ].map(col => {
+                                            const colTasks = tasks.filter(t => t.status === col.id);
+                                            return (
+                                                <div key={col.id} className={`flex flex-col rounded-2xl border ${col.color} overflow-hidden`}>
+                                                    <div className={`px-4 py-3 border-b border-white/5 flex items-center justify-between ${col.header}`}>
+                                                        <h3 className="text-sm font-bold uppercase tracking-wider">{col.label}</h3>
+                                                        <span className="px-2 py-0.5 rounded-full bg-black/30 text-xs font-bold">{colTasks.length}</span>
+                                                    </div>
+                                                    <div className="p-3 flex-1 overflow-y-auto space-y-3 h-[400px]">
+                                                        {colTasks.map(task => (
+                                                            <div key={task.task_id} className="p-4 bg-white/5 border border-white/10 rounded-xl relative opacity-80 cursor-default">
+                                                                <p className="text-sm font-semibold text-white mb-4 leading-relaxed">{task.title}</p>
+                                                                <div className="flex items-center justify-between mt-auto border-t border-white/5 pt-3">
+                                                                    <div className="flex items-center gap-2">
+                                                                        {task.assignee_name || task.assigned_to ? (
+                                                                            <div className="flex items-center gap-2" title={task.assignee_name || 'Assigned'}>
+                                                                                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-sm">
+                                                                                    <span className="text-[10px] font-bold text-white uppercase">
+                                                                                        {(task.assignee_name || 'U').charAt(0)}
+                                                                                    </span>
+                                                                                </div>
+                                                                                <span className="text-[10px] font-semibold text-white/40 max-w-[80px] truncate">
+                                                                                    {task.assignee_name ? task.assignee_name.split(' ')[0] : 'Assigned'}
+                                                                                </span>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <span className="text-[10px] font-semibold text-white/20 uppercase tracking-wider">Unassigned</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                            <p className="text-sm">{msg.content}</p>
-                                                        </div>
-                                                    )}
+                                                        ))}
+                                                        {colTasks.length === 0 && (
+                                                            <div className="text-center py-10 text-white/20 text-sm font-semibold tracking-wider">
+                                                                Empty
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            ))
-                                        )}
+                                            )
+                                        })}
                                     </div>
-                                    <form onSubmit={handleSendMessage} className="flex gap-2 mt-auto">
-                                        <input
-                                            type="text"
-                                            value={newMessage}
-                                            onChange={e => setNewMessage(e.target.value)}
-                                            placeholder="Type a message..."
-                                            className="flex-1 px-4 py-3 bg-white/5 border border-white/10 text-white placeholder:text-white/30 rounded-xl text-sm focus:outline-none focus:border-white/30 transition-all"
-                                        />
-                                        <button type="submit" disabled={!newMessage.trim()} className="px-6 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-xl disabled:opacity-50 hover:shadow-lg transition-all">
-                                            Send
-                                        </button>
-                                    </form>
                                 </div>
                             )}
                         </div>

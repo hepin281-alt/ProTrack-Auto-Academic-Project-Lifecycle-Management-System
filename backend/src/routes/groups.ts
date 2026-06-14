@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import * as groupController from '../controllers/groups.js';
 import * as memberController from '../controllers/members.js';
-import * as proposalController from '../controllers/proposals.js';
 import * as logbookController from '../controllers/logbooks.js';
 import * as allocationController from '../controllers/allocations.js';
 import { authenticateRequest, authorize } from '../middleware/auth.js';
@@ -13,6 +12,7 @@ router.use(authenticateRequest);
 
 // Group CRUD endpoints
 router.get('/', groupController.getGroups);
+router.get('/available-students', memberController.getAvailableStudents);
 router.post('/', authorize('STUDENT'), groupController.createGroup);
 router.get('/:group_id', groupController.getGroupById);
 router.patch('/:group_id/status', authorize('COORDINATOR', 'STUDENT'), groupController.updateGroupStatus);
@@ -22,16 +22,6 @@ router.post('/:group_id/members', authorize('STUDENT'), memberController.addMemb
 router.get('/:group_id/members', memberController.getMembers);
 router.delete('/:group_id/members/:student_id', authorize('STUDENT'), memberController.removeMember);
 router.patch('/:group_id/members/:student_id/leader', authorize('STUDENT'), memberController.setLeader);
-
-// Project proposals endpoints
-router.post('/:group_id/proposals', authorize('STUDENT'), proposalController.submitProposal);
-router.get('/:group_id/proposals', proposalController.getProposals);
-router.patch('/proposals/:proposal_id', authorize('STUDENT'), proposalController.updateProposal);
-router.patch('/proposals/:proposal_id/approve', authorize('COORDINATOR', 'GUIDE'), proposalController.approveProposal);
-router.patch('/proposals/:proposal_id/reject', authorize('COORDINATOR', 'GUIDE'), proposalController.rejectProposal);
-router.patch('/proposals/:proposal_id/revision', authorize('COORDINATOR', 'GUIDE'), proposalController.requestRevision);
-router.patch('/proposals/:proposal_id/plagiarism', authorize('GUIDE', 'COORDINATOR'), proposalController.checkPlagiarism);
-router.delete('/proposals/:proposal_id', authorize('STUDENT'), proposalController.deleteProposal);
 
 // Logbook endpoints
 router.post('/:group_id/logbooks', authorize('STUDENT'), logbookController.submitLogbook);

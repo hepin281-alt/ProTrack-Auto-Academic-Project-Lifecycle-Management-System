@@ -254,37 +254,6 @@ const LandingPage: React.FC = () => {
         <div className="bg-[#0a0015] text-white min-h-screen overflow-x-hidden selection:bg-purple-500/30" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
             
             {/* ─── Global styles ─── */}
-            <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-                @keyframes blob { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(30px,-50px) scale(1.1)} 66%{transform:translate(-20px,20px) scale(0.9)} }
-                @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
-                @keyframes slide-up { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
-                @keyframes fade-in { from{opacity:0} to{opacity:1} }
-                @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-                .animate-blob { animation: blob 8s infinite ease-in-out; }
-                .blob-delay-1 { animation-delay: 2s; }
-                .blob-delay-2 { animation-delay: 4s; }
-                .animate-float { animation: float 4s ease-in-out infinite; }
-                .animate-slide-up { animation: slide-up 0.6s ease-out both; }
-                .animate-fade-in { animation: fade-in 0.5s ease-out both; }
-                .delay-100 { animation-delay: 100ms; }
-                .delay-200 { animation-delay: 200ms; }
-                .delay-300 { animation-delay: 300ms; }
-                .delay-400 { animation-delay: 400ms; }
-                .delay-500 { animation-delay: 500ms; }
-                .shimmer-text {
-                    background: linear-gradient(90deg, #a855f7, #3b82f6, #ec4899, #a855f7);
-                    background-size: 200% auto;
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                    background-clip: text;
-                    animation: shimmer 4s linear infinite;
-                }
-                .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.08); }
-                .glass-strong { background: rgba(255,255,255,0.05); backdrop-filter: blur(40px); border: 1px solid rgba(255,255,255,0.12); }
-                input::placeholder { color: rgba(255,255,255,0.2); }
-                input:-webkit-autofill { -webkit-box-shadow: 0 0 0 1000px #0a0015 inset !important; -webkit-text-fill-color: white !important; }
-            `}</style>
 
             {/* ══════════════════════ NAVBAR ══════════════════════ */}
             <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-500 ${scrolled ? 'bg-[#0a0015]/80 backdrop-blur-2xl border-b border-white/[0.06]' : ''}`}>

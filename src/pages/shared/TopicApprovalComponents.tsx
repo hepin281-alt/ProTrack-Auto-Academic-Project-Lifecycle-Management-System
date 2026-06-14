@@ -361,11 +361,9 @@ export function TopicReviewShell({
             <div className="flex items-center gap-2 mb-6 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
                 {[
                     { label: 'Student Submits', active: false, done: true },
-                    { label: 'Guide Reviews', active: stage === 'GUIDE', done: stage !== 'GUIDE' },
-                    { label: 'Committee Reviews', active: stage === 'COMMITTEE', done: stage === 'COORDINATOR' },
-                    { label: 'Coordinator Approves', active: stage === 'COORDINATOR', done: false },
-                    { label: 'Final Approved', active: false, done: false },
-                ].map((step, i) => (
+                    { label: 'Coordinator Review', active: stage !== 'APPROVED' && !stage.includes('REJECTED'), done: stage === 'APPROVED' },
+                    { label: 'Approved', active: stage === 'APPROVED', done: stage === 'APPROVED' },
+                ].map((step, i, arr) => (
                     <React.Fragment key={step.label}>
                         <div className={cn('flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-lg',
                             step.active ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' :
@@ -373,7 +371,7 @@ export function TopicReviewShell({
                             {step.done && <CheckCircle2 size={10} />}
                             {step.label}
                         </div>
-                        {i < 4 && <div className="flex-1 h-px bg-white/10" />}
+                        {i < arr.length - 1 && <div className="flex-1 h-px bg-white/10" />}
                     </React.Fragment>
                 ))}
             </div>

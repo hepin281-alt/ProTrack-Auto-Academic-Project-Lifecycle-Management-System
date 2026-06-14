@@ -16,9 +16,13 @@ interface Proposal {
     proposal_id: string;
     group_id: string;
     title: string;
+    abstract?: string;
+    objectives?: string;
     domain_tags: string[];
+    technology_stack: string[];
     priority: number;
     status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'REVISION_REQUESTED';
+    approval_stage: string;
     rejection_reason?: string;
     is_approved: boolean;
     created_at: string;
@@ -40,7 +44,10 @@ const TopicWorkflow: React.FC = () => {
     // Form states
     const [selectedPriority, setSelectedPriority] = useState<number>(1);
     const [title, setTitle] = useState('');
+    const [abstract, setAbstract] = useState('');
+    const [objectives, setObjectives] = useState('');
     const [tags, setTags] = useState('');
+    const [techStack, setTechStack] = useState('');
 
     const showToast = (type: 'success' | 'error', msg: string) => {
         setToast({ type, msg });
@@ -69,7 +76,7 @@ const TopicWorkflow: React.FC = () => {
         if (!token) return;
         try {
             setIsLoading(true);
-            const data = await api.getProposals(token, groupId);
+            const data = await api.getGroupTopics(token, groupId);
             const pList = Array.isArray(data) ? data : (data?.proposals || []);
             setProposals(pList);
         } catch (err) {
@@ -103,7 +110,10 @@ const TopicWorkflow: React.FC = () => {
         }
         setSelectedPriority(available[0]);
         setTitle('');
+        setAbstract('');
+        setObjectives('');
         setTags('');
+        setTechStack('');
         setEditingProposal(null);
         setShowAddModal(true);
     };
@@ -112,7 +122,10 @@ const TopicWorkflow: React.FC = () => {
         setEditingProposal(proposal);
         setSelectedPriority(proposal.priority);
         setTitle(proposal.title);
-        setTags(proposal.domain_tags.join(', '));
+        setAbstract(proposal.abstract || '');
+        setObjectives(proposal.objectives || '');
+        setTags((proposal.domain_tags || []).join(', '));
+        setTechStack((proposal.technology_stack || []).join(', '));
         setShowAddModal(true);
     };
 
@@ -123,28 +136,19 @@ const TopicWorkflow: React.FC = () => {
         try {
             setIsLoading(true);
             const tagArray = tags.split(',').map(t => t.trim()).filter(Boolean);
+            const stackArray = techStack.split(',').map(t => t.trim()).filter(Boolean);
 
-            if (editingProposal) {
-                // Update existing proposal
-                await api.updateProposal(
-                    token!,
-                    editingProposal.proposal_id,
-                    title.trim(),
-                    tagArray,
-                    selectedPriority
-                );
-                showToast('success', 'Topic updated successfully!');
-            } else {
-                // Submit new proposal
-                await api.submitProposal(
-                    token!,
-                    selectedGroup.group_id,
-                    title.trim(),
-                    tagArray,
-                    selectedPriority
-                );
-                showToast('success', 'Topic submitted successfully!');
-            }
+            const topicData = {
+                priority: selectedPriority,
+                title: title.trim(),
+                abstract: abstract.trim(),
+                objectives: objectives.trim(),
+                domain_tags: tagArray,
+                technology_stack: stackArray
+            };
+
+            await api.submitTopics(token!, selectedGroup.group_id, [topicData]);
+            showToast('success', editingProposal ? 'Topic updated successfully!' : 'Topic submitted successfully!');
 
             setShowAddModal(false);
             fetchProposals(selectedGroup.group_id);
@@ -275,8 +279,8 @@ const TopicWorkflow: React.FC = () => {
                                 onClick={() => setSelectedGroup(group)}
                                 className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
                                     selectedGroup?.group_id === group.group_id
-                                        ? 'bg-white/15 text-white border-2 border-purple-500'
-                                        : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
+                                        ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-200 border border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.15)]'
+                                        : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 hover:border-white/20'
                                 }`}
                             >
                                 {group.group_name}
@@ -357,7 +361,9 @@ const TopicWorkflow: React.FC = () => {
                                 }
 
                                 return (
-                                    <div key={proposal.proposal_id} className="rounded-2xl bg-white/[0.04] border border-white/[0.08] overflow-hidden hover:bg-white/[0.06] transition-all">
+                                    <div key={proposal.proposal_id} className="group rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-purple-500/30 hover:bg-white/[0.05] hover:shadow-[0_8px_30px_rgba(168,85,247,0.05)] transition-all overflow-hidden relative">
+                                        {/* Subtle top gradient bar */}
+                                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500/0 via-purple-500/20 to-pink-500/0 opacity-0 group-hover:opacity-100 transition-opacity" />
                                         <div className="p-6">
                                             {/* Header */}
                                             <div className="flex items-start justify-between gap-4 mb-4">
@@ -408,6 +414,36 @@ const TopicWorkflow: React.FC = () => {
                                                     ))}
                                                 </div>
                                             )}
+
+                                            {/* Tech Stack */}
+                                            {proposal.technology_stack && proposal.technology_stack.length > 0 && (
+                                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                                    {proposal.technology_stack.map(tag => (
+                                                        <span
+                                                            key={tag}
+                                                            className="px-2.5 py-1 text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-md"
+                                                        >
+                                                            {tag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Abstract & Objectives */}
+                                            <div className="space-y-2 mb-4">
+                                                {proposal.abstract && (
+                                                    <div>
+                                                        <span className="text-[10px] font-bold text-white/40 uppercase">Abstract:</span>
+                                                        <p className="text-xs text-white/70 mt-1 line-clamp-3">{proposal.abstract}</p>
+                                                    </div>
+                                                )}
+                                                {proposal.objectives && (
+                                                    <div>
+                                                        <span className="text-[10px] font-bold text-white/40 uppercase">Objectives:</span>
+                                                        <p className="text-xs text-white/70 mt-1 line-clamp-2">{proposal.objectives}</p>
+                                                    </div>
+                                                )}
+                                            </div>
 
                                             {/* Rejection/Revision Reason */}
                                             {(proposal.status === 'REJECTED' || proposal.status === 'REVISION_REQUESTED') && proposal.rejection_reason && (
@@ -477,13 +513,13 @@ const TopicWorkflow: React.FC = () => {
                                                 }`}
                                             >
                                                 <div className="flex items-center justify-center gap-1.5 mb-1">
-                                                    <Star size={14} />
+                                                    <Star size={14} className={selectedPriority === p ? "text-white" : "text-purple-400 opacity-70"} />
                                                     Priority {p}
                                                 </div>
-                                                <div className="text-[10px] opacity-60">
+                                                <div className="text-[10px] opacity-60 font-semibold tracking-wide">
                                                     {p === 1 ? 'Most Preferred' : p === 2 ? 'Alternate' : 'Fallback'}
                                                 </div>
-                                                {isUsed && <div className="text-[9px] mt-1">Already Used</div>}
+                                                {isUsed && <div className="text-[9px] mt-1 text-red-400 font-bold uppercase tracking-wider">Already Used</div>}
                                             </button>
                                         );
                                     })}
@@ -503,6 +539,48 @@ const TopicWorkflow: React.FC = () => {
                                     className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white placeholder:text-white/25 rounded-xl text-sm focus:outline-none focus:border-purple-500/50 transition-all"
                                     required
                                     autoFocus={!editingProposal}
+                                />
+                            </div>
+
+                            {/* Abstract */}
+                            <div>
+                                <label className="block text-xs font-bold text-white/40 uppercase tracking-widest mb-2">
+                                    Abstract
+                                </label>
+                                <textarea
+                                    value={abstract}
+                                    onChange={e => setAbstract(e.target.value)}
+                                    placeholder="Brief description of the project..."
+                                    rows={3}
+                                    className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white placeholder:text-white/25 rounded-xl text-sm focus:outline-none focus:border-purple-500/50 transition-all resize-none"
+                                />
+                            </div>
+
+                            {/* Objectives */}
+                            <div>
+                                <label className="block text-xs font-bold text-white/40 uppercase tracking-widest mb-2">
+                                    Objectives
+                                </label>
+                                <textarea
+                                    value={objectives}
+                                    onChange={e => setObjectives(e.target.value)}
+                                    placeholder="Main goals of the project..."
+                                    rows={2}
+                                    className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white placeholder:text-white/25 rounded-xl text-sm focus:outline-none focus:border-purple-500/50 transition-all resize-none"
+                                />
+                            </div>
+
+                            {/* Tech Stack */}
+                            <div>
+                                <label className="block text-xs font-bold text-white/40 uppercase tracking-widest mb-2">
+                                    Technology Stack (comma-separated)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={techStack}
+                                    onChange={e => setTechStack(e.target.value)}
+                                    placeholder="e.g., React, Node.js, PostgreSQL"
+                                    className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white placeholder:text-white/25 rounded-xl text-sm focus:outline-none focus:border-purple-500/50 transition-all"
                                 />
                             </div>
 

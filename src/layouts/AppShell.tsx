@@ -22,7 +22,6 @@ const navigationByRole = {
         { label: 'Dashboard', path: '/guide/dashboard', icon: LayoutDashboard },
         { label: 'My Groups', path: '/guide/groups', icon: Users },
         { label: 'Reviews', path: '/guide/reviews', icon: CheckSquare },
-        { label: 'Topic Approvals', path: '/guide/topics', icon: FileText },
     ],
     COORDINATOR: [
         { label: 'Dashboard', path: '/coordinator/dashboard', icon: BarChart2 },
@@ -37,7 +36,6 @@ const navigationByRole = {
     ],
     COMMITTEE: [
         { label: 'Dashboard', path: '/committee/dashboard', icon: Trophy },
-        { label: 'Topic Approvals', path: '/committee/topics', icon: FileText },
         { label: 'Evaluations', path: '/committee/evaluations', icon: CheckCircle2 },
         { label: 'Final Results', path: '/committee/results', icon: Target },
         { label: 'Historic Search', path: '/committee/history', icon: Calendar }
@@ -64,7 +62,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, currentPage }) => 
 
     const handleLogout = () => {
         clearAuth();
-        navigate('/login');
+        navigate('/');
     };
 
     return (
@@ -246,17 +244,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children, currentPage }) => 
                 </main>
             </div>
 
-            {/* Animation styles */}
-            <style>{`
-                @keyframes blob {
-                    0%, 100% { transform: translate(0, 0) scale(1); }
-                    33% { transform: translate(30px, -50px) scale(1.1); }
-                    66% { transform: translate(-20px, 20px) scale(0.9); }
-                }
-                .animate-blob { animation: blob 7s infinite; }
-                .animation-delay-2000 { animation-delay: 2s; }
-                .animation-delay-4000 { animation-delay: 4s; }
-            `}</style>
         </div>
     );
 };

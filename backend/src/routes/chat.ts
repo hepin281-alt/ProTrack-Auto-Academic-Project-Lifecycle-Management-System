@@ -24,7 +24,7 @@ router.get('/announcements', authenticateRequest, async (req, res) => {
 // Post a new global announcement (Coordinator only)
 router.post('/announcements', authenticateRequest, authorize('COORDINATOR'), async (req, res) => {
     const { content } = req.body;
-    const userId = (req as any).user.userId;
+    const userId = (req as any).user.user_id;
 
     try {
         const { rows } = await pool.query(
@@ -48,7 +48,7 @@ router.get('/group/:groupId', authenticateRequest, async (req, res) => {
             SELECT c.*, u.email as sender_email, u.role as sender_role
             FROM chat_messages c
             JOIN users u ON c.sender_id = u.user_id
-            WHERE c.group_id = $1
+            WHERE c.group_id = $1 OR (c.group_id IS NULL AND c.is_announcement = TRUE)
             ORDER BY c.created_at ASC
         `, [groupId]);
         res.json(rows);
@@ -62,7 +62,7 @@ router.get('/group/:groupId', authenticateRequest, async (req, res) => {
 router.post('/group/:groupId', authenticateRequest, async (req, res) => {
     const { groupId } = req.params;
     const { content } = req.body;
-    const userId = (req as any).user.userId;
+    const userId = (req as any).user.user_id;
 
     try {
         const { rows } = await pool.query(

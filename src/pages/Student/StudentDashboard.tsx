@@ -94,7 +94,7 @@ export const StudentDashboard: React.FC = () => {
 
     const handleLogout = () => {
         clearAuth();
-        navigate('/login');
+        navigate('/');
     };
 
     const selectedGroup = groups.find(g => g.group_id === selectedGroupId);

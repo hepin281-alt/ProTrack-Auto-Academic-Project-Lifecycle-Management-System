@@ -105,3 +105,79 @@ export const autoGroupOrphans = async (req: Request, res: Response): Promise<voi
         res.status(500).json({ error: 'Failed to auto-group orphans' });
     }
 };
+
+export const getFacultyList = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const result = await query(
+            `SELECT u.user_id as faculty_id, u.full_name, u.email, u.role, f.expertise_tags, f.current_workload, f.max_workload
+             FROM users u
+             LEFT JOIN faculty_profiles f ON u.user_id = f.faculty_id
+             WHERE u.role IN ('GUIDE', 'COMMITTEE')
+             ORDER BY u.full_name ASC`
+        );
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error fetching faculty list:', error);
+        res.status(500).json({ error: 'Failed to fetch faculty list' });
+    }
+};
+
+export const updateGuideWorkload = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { faculty_id } = req.params;
+        const { max_workload } = req.body;
+        
+        if (typeof max_workload !== 'number' || max_workload < 0) {
+            res.status(400).json({ error: 'Invalid max_workload' });
+            return;
+        }
+
+        const result = await query(
+            `UPDATE faculty_profiles SET max_workload = $1 WHERE faculty_id = $2 RETURNING *`,
+            [max_workload, faculty_id]
+        );
+
+        if (result.rows.length === 0) {
+            res.status(404).json({ error: 'Faculty profile not found' });
+            return;
+        }
+
+        res.json({ message: 'Max workload updated successfully', profile: result.rows[0] });
+    } catch (error) {
+        console.error('Error updating guide workload:', error);
+        res.status(500).json({ error: 'Failed to update guide workload' });
+    }
+};
+
+export const deleteUser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const userRes = await query('SELECT email, role FROM users WHERE user_id = $1', [id]);
+        if (userRes.length === 0) {
+            res.status(404).json({ error: 'User not found' });
+            return;
+        }
+        
+        const { email, role } = userRes[0];
+        
+        // Delete profiles and un-claim whitelist
+        if (role === 'STUDENT') {
+            await query('DELETE FROM student_profiles WHERE student_id = $1', [id]);
+            await query('UPDATE student_whitelist SET is_claimed = false WHERE email = $1', [email]);
+        } else {
+            await query('DELETE FROM faculty_profiles WHERE faculty_id = $1', [id]);
+            await query('UPDATE faculty_whitelist SET is_claimed = false WHERE email = $1', [email]);
+        }
+        
+        await query('DELETE FROM users WHERE user_id = $1', [id]);
+        
+        res.status(200).json({ message: 'User deleted successfully' });
+    } catch (error: any) {
+        console.error('Delete user error:', error);
+        if (error.code === '23503') { // Postgres foreign key violation
+            res.status(400).json({ error: 'Cannot delete user because they are assigned to a group or project.' });
+            return;
+        }
+        res.status(500).json({ error: 'Failed to delete user' });
+    }
+};

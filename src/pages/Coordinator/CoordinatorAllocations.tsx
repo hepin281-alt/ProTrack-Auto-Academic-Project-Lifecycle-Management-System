@@ -9,6 +9,7 @@ import {
     Star, BarChart2, Sparkles, Shield, TriangleAlert
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -225,17 +226,20 @@ export const CoordinatorAllocations: React.FC = () => {
                     </p>
                 </div>
 
-                <button
+                <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => batchMutation.mutate()}
                     disabled={batchMutation.isPending || pendingGroups.length === 0}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-purple-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-purple-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed relative overflow-hidden"
                 >
+                    <div className="absolute inset-0 bg-white/20 hover:bg-transparent transition-colors duration-300 pointer-events-none" />
                     {batchMutation.isPending
                         ? <Loader2 size={14} className="animate-spin" />
                         : <Sparkles size={14} />
                     }
-                    Batch Auto-Allocate All ({pendingGroups.length})
-                </button>
+                    Run Auto-Allocate Algorithm ({pendingGroups.length})
+                </motion.button>
             </div>
 
             {/* Batch Results Summary */}
@@ -307,40 +311,66 @@ export const CoordinatorAllocations: React.FC = () => {
                                 </div>
                             )}
                             {pendingGroups.map(group => (
-                                <button
+                                <motion.div
+                                    layout
                                     key={group.group_id}
-                                    onClick={() => { setSelectedGroup(group); setExpandedGuideId(null); }}
-                                    className={cn(
-                                        'w-full text-left p-4 rounded-xl border transition-all',
-                                        selectedGroup?.group_id === group.group_id
-                                            ? 'bg-orange-500/10 border-orange-500/40 shadow-lg shadow-orange-500/10'
-                                            : 'bg-white/[0.02] border-white/[0.06] hover:border-white/20'
-                                    )}
+                                    onDragOver={(e: React.DragEvent) => {
+                                        e.preventDefault();
+                                        if (selectedGroup?.group_id === group.group_id) {
+                                            e.currentTarget.classList.add('bg-orange-500/20');
+                                        }
+                                    }}
+                                    onDragLeave={(e: React.DragEvent) => {
+                                        e.currentTarget.classList.remove('bg-orange-500/20');
+                                    }}
+                                    onDrop={(e: React.DragEvent) => {
+                                        e.preventDefault();
+                                        e.currentTarget.classList.remove('bg-orange-500/20');
+                                        const guideId = e.dataTransfer.getData('guideId');
+                                        if (guideId && selectedGroup?.group_id === group.group_id) {
+                                            assignMutation.mutate({ guideId });
+                                        }
+                                    }}
                                 >
-                                    <div className="flex justify-between items-start">
-                                        <h4 className={cn(
-                                            'text-sm font-bold',
-                                            selectedGroup?.group_id === group.group_id ? 'text-orange-300' : 'text-white'
-                                        )}>
-                                            {group.group_name}
-                                        </h4>
-                                        <span className="flex items-center gap-1 text-[10px] text-white/40">
-                                            <Users size={10} /> {group.member_count}
-                                        </span>
-                                    </div>
-                                    {group.domain_tags?.length > 0 && (
-                                        <div className="flex flex-wrap gap-1 mt-2">
-                                            {group.domain_tags.map(tag => (
-                                                <span key={tag} className="px-1.5 py-0.5 bg-orange-500/10 border border-orange-500/20 rounded text-[9px] text-orange-300/80">
-                                                    {tag}
-                                                </span>
-                                            ))}
+                                    <button
+                                        onClick={() => { setSelectedGroup(group); setExpandedGuideId(null); }}
+                                        className={cn(
+                                            'w-full text-left p-4 rounded-xl border transition-all',
+                                            selectedGroup?.group_id === group.group_id
+                                                ? 'bg-orange-500/10 border-orange-500/40 shadow-lg shadow-orange-500/10 ring-2 ring-orange-500/20 ring-offset-2 ring-offset-[#09090b]'
+                                                : 'bg-white/[0.02] border-white/[0.06] hover:border-white/20'
+                                        )}
+                                    >
+                                        <div className="flex justify-between items-start mb-2">
+                                            <h4 className={cn(
+                                                'text-sm font-bold',
+                                                selectedGroup?.group_id === group.group_id ? 'text-orange-300' : 'text-white'
+                                            )}>
+                                                {group.group_name}
+                                            </h4>
+                                            <span className="flex items-center gap-1 text-[10px] text-white/40">
+                                                <Users size={10} /> {group.member_count}
+                                            </span>
                                         </div>
-                                    )}
-                                    {!group.domain_tags?.length && (
-                                        <p className="text-[10px] text-white/25 mt-1 italic">No proposal submitted yet</p>
-                                    )}
-                                </button>
+                                        {selectedGroup?.group_id === group.group_id && (
+                                            <div className="text-[10px] font-semibold text-orange-400 mb-2 px-2 py-1 bg-orange-500/10 rounded-md inline-block">
+                                                Drop guide here to assign
+                                            </div>
+                                        )}
+                                        {group.domain_tags?.length > 0 && (
+                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                {group.domain_tags.map(tag => (
+                                                    <span key={tag} className="px-1.5 py-0.5 bg-orange-500/10 border border-orange-500/20 rounded text-[9px] text-orange-300/80">
+                                                        {tag}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {!group.domain_tags?.length && (
+                                            <p className="text-[10px] text-white/25 mt-1 italic">No proposal submitted yet</p>
+                                        )}
+                                    </button>
+                                </motion.div>
                             ))}
                         </div>
                     </div>
@@ -353,9 +383,20 @@ export const CoordinatorAllocations: React.FC = () => {
                                 {selectedGroup ? `AI Rankings for "${selectedGroup.group_name}"` : 'Select a group'}
                             </h3>
                             {rankedGuides.length > 0 && (
-                                <span className="bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                                    {rankedGuides.length} RANKED
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    {selectedGroup && rankedGuides.length > 0 && (
+                                        <button
+                                            onClick={() => assignMutation.mutate({ guideId: rankedGuides[0].faculty_id })}
+                                            disabled={assignMutation.isPending}
+                                            className="px-3 py-1 bg-indigo-500/20 text-indigo-300 text-[10px] font-bold rounded-lg hover:bg-indigo-500/30 transition-all flex items-center gap-1"
+                                        >
+                                            <Zap size={10} /> Auto-Pick Top
+                                        </button>
+                                    )}
+                                    <span className="bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                        {rankedGuides.length} RANKED
+                                    </span>
+                                </div>
                             )}
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -380,11 +421,20 @@ export const CoordinatorAllocations: React.FC = () => {
                                 const isExpanded = expandedGuideId === guide.faculty_id;
                                 const isTop = idx === 0;
                                 return (
-                                    <div
+                                    <motion.div
+                                        layout
+                                        draggable
+                                        onDragStart={(e: any) => {
+                                            e.dataTransfer.setData('guideId', guide.faculty_id);
+                                            e.currentTarget.style.opacity = '0.5';
+                                        }}
+                                        onDragEnd={(e: any) => {
+                                            e.currentTarget.style.opacity = '1';
+                                        }}
                                         key={guide.faculty_id}
                                         className={cn(
-                                            'rounded-xl border transition-all',
-                                            isTop ? 'border-indigo-500/40 bg-indigo-500/5' : 'border-white/[0.06] bg-white/[0.02]'
+                                            'rounded-xl border transition-all cursor-grab active:cursor-grabbing',
+                                            isTop ? 'border-indigo-500/40 bg-indigo-500/5 hover:border-indigo-500/60' : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.15]'
                                         )}
                                     >
                                         {/* Guide Header */}
@@ -472,7 +522,7 @@ export const CoordinatorAllocations: React.FC = () => {
                                                 </div>
                                             </div>
                                         )}
-                                    </div>
+                                    </motion.div>
                                 );
                             })}
                         </div>

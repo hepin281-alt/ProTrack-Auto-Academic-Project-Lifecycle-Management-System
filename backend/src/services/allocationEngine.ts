@@ -112,8 +112,8 @@ export async function fetchGroupsForAllocation(groupIds?: string[]): Promise<Gro
             COALESCE(
                 (SELECT pp.domain_tags
                  FROM project_proposals pp
-                 WHERE pp.group_id = g.group_id
-                 ORDER BY pp.created_at DESC LIMIT 1),
+                 WHERE pp.group_id = g.group_id AND pp.is_approved = true
+                 LIMIT 1),
                 '{}'::text[]
             ) as domain_tags
         FROM project_groups g

@@ -190,19 +190,19 @@ export const StudentLogbook: React.FC = () => {
             )}
 
             {/* Header */}
-            <div className="mb-8 flex items-center justify-between">
+            <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <div className="flex items-center gap-3 mb-1">
-                        <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500">
-                            <BookOpen size={18} className="text-white" />
+                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30">
+                            <BookOpen size={20} className="text-purple-400" />
                         </div>
-                        <h1 className="text-2xl font-black text-white">Logbook</h1>
+                        <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70">Logbook</h1>
                     </div>
-                    <p className="text-white/40 text-sm ml-11">Weekly project progress journal</p>
+                    <p className="text-white/40 text-sm ml-[52px]">Weekly project progress journal</p>
                 </div>
                 <button
                     onClick={() => setShowSubmitModal(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-pink-600 text-white text-sm font-bold rounded-xl hover:shadow-lg hover:shadow-purple-500/25 hover:-translate-y-0.5 transition-all"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-pink-600 text-white text-sm font-bold rounded-xl hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:-translate-y-0.5 transition-all"
                 >
                     <Plus size={16} /> New Entry
                 </button>
@@ -266,62 +266,83 @@ export const StudentLogbook: React.FC = () => {
                         </button>
                     </div>
                 ) : (
-                    logbooks.map((log) => {
-                        const sc = statusConfig(log.guide_status);
-                        const isExpanded = expandedId === log.log_id;
-                        return (
-                            <div key={log.log_id} className="border-b border-white/[0.05] last:border-0">
-                                <button
-                                    onClick={() => setExpandedId(isExpanded ? null : log.log_id)}
-                                    className="w-full flex items-center justify-between p-5 hover:bg-white/[0.03] transition-colors text-left"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/20 flex items-center justify-center flex-shrink-0">
-                                            <span className="text-sm font-black text-purple-300">W{log.week_number}</span>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-semibold text-white">Week {log.week_number}</p>
-                                            <p className="text-xs text-white/35 mt-0.5 max-w-sm truncate">{log.work_summary}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 flex-shrink-0 ml-4">
-                                        <span className="text-[10px] text-white/25">{log.created_at}</span>
-                                        <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border ${sc.cls}`}>
-                                            {sc.icon} {sc.label}
-                                        </span>
-                                        {isExpanded ? <ChevronUp size={14} className="text-white/30" /> : <ChevronDown size={14} className="text-white/30" />}
-                                    </div>
-                                </button>
-
-                                {isExpanded && (
-                                    <div className="px-5 pb-5 space-y-3">
-                                        <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                                            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">Work Summary</p>
-                                            <p className="text-sm text-white/70 leading-relaxed">{log.work_summary}</p>
-                                        </div>
-                                        {log.evidence_url && (
-                                            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center gap-2">
-                                                <Link2 size={13} className="text-blue-400 flex-shrink-0" />
-                                                <a href={log.evidence_url} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:text-blue-300 underline break-all">
-                                                    {log.evidence_url.split('/').pop()}
-                                                </a>
-                                            </div>
-                                        )}
-                                        {log.guide_remarks && (
-                                            <div className={`p-4 rounded-xl border ${
-                                                log.guide_status === 'APPROVED'
-                                                    ? 'bg-emerald-500/[0.06] border-emerald-500/[0.15]'
-                                                    : 'bg-orange-500/[0.06] border-orange-500/[0.15]'
+                    <div className="p-6 relative">
+                        {/* Timeline vertical line */}
+                        <div className="absolute left-[3.25rem] top-10 bottom-10 w-px bg-white/[0.08]" />
+                        <div className="space-y-6 relative">
+                            {logbooks.map((log) => {
+                                const sc = statusConfig(log.guide_status);
+                                const isExpanded = expandedId === log.log_id;
+                                return (
+                                    <div key={log.log_id} className="relative flex gap-6 group">
+                                        <div className="relative z-10 flex flex-col items-center mt-1">
+                                            <div className={`w-11 h-11 rounded-full flex items-center justify-center border-4 border-[#0B0F19] shadow-[0_0_15px_rgba(255,255,255,0.05)] ${
+                                                log.guide_status === 'APPROVED' ? 'bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-400 border-emerald-500/10' :
+                                                log.guide_status === 'NEEDS_REVISION' ? 'bg-gradient-to-br from-orange-500/20 to-red-500/20 text-orange-400 border-orange-500/10' :
+                                                'bg-gradient-to-br from-purple-500/20 to-pink-500/20 text-purple-400 border-purple-500/10'
                                             }`}>
-                                                <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">Guide Feedback</p>
-                                                <p className="text-sm text-white/70 italic">"{log.guide_remarks}"</p>
+                                                <span className="text-sm font-black">W{log.week_number}</span>
                                             </div>
-                                        )}
+                                        </div>
+                                        <div className="flex-1 bg-white/[0.02] border border-white/[0.05] rounded-2xl overflow-hidden hover:border-white/[0.12] hover:bg-white/[0.04] transition-all hover:-translate-y-0.5 hover:shadow-lg">
+                                            <button
+                                                onClick={() => setExpandedId(isExpanded ? null : log.log_id)}
+                                                className="w-full flex flex-col md:flex-row md:items-center justify-between p-5 text-left gap-4"
+                                            >
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <p className="text-sm font-semibold text-white">Week {log.week_number} Update</p>
+                                                        <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${sc.cls}`}>
+                                                            {sc.icon} {sc.label}
+                                                        </span>
+                                                    </div>
+                                                    <p className={`text-xs text-white/40 ${isExpanded ? '' : 'line-clamp-2'}`}>{log.work_summary}</p>
+                                                </div>
+                                                <div className="flex items-center gap-4 text-white/30 flex-shrink-0">
+                                                    <span className="text-[11px] font-semibold tracking-wider">{log.created_at}</span>
+                                                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+                                                        {isExpanded ? <ChevronUp size={16} className="text-white/60" /> : <ChevronDown size={16} className="text-white/60" />}
+                                                    </div>
+                                                </div>
+                                            </button>
+
+                                            {isExpanded && (
+                                                <div className="px-5 pb-5 pt-2 border-t border-white/[0.05] space-y-4">
+                                                    <div className="p-4 rounded-xl bg-black/20 border border-white/[0.04]">
+                                                        <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">Detailed Summary</p>
+                                                        <p className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap">{log.work_summary}</p>
+                                                    </div>
+                                                    {log.evidence_url && (
+                                                        <div className="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center gap-3">
+                                                            <div className="p-1.5 rounded-lg bg-blue-500/20">
+                                                                <Link2 size={14} className="text-blue-400 flex-shrink-0" />
+                                                            </div>
+                                                            <a href={log.evidence_url} target="_blank" rel="noreferrer" className="text-xs font-medium text-blue-400 hover:text-blue-300 underline underline-offset-2 break-all">
+                                                                {log.evidence_url.split('/').pop()}
+                                                            </a>
+                                                        </div>
+                                                    )}
+                                                    {log.guide_remarks && (
+                                                        <div className={`p-4 rounded-xl border relative overflow-hidden ${
+                                                            log.guide_status === 'APPROVED'
+                                                                ? 'bg-emerald-500/[0.06] border-emerald-500/[0.15]'
+                                                                : 'bg-orange-500/[0.06] border-orange-500/[0.15]'
+                                                        }`}>
+                                                            <div className={`absolute top-0 left-0 w-1 h-full ${
+                                                                log.guide_status === 'APPROVED' ? 'bg-emerald-500' : 'bg-orange-500'
+                                                            }`} />
+                                                            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2 ml-1">Guide Feedback</p>
+                                                            <p className="text-sm text-white/80 italic ml-1 leading-relaxed">"{log.guide_remarks}"</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                )}
-                            </div>
-                        );
-                    })
+                                );
+                            })}
+                        </div>
+                    </div>
                 )}
             </div>
 
@@ -401,7 +422,7 @@ export const StudentLogbook: React.FC = () => {
                                 <button type="button" onClick={() => setShowSubmitModal(false)}
                                     className="flex-1 py-2.5 text-sm text-white/50 border border-white/10 rounded-xl hover:bg-white/5 font-semibold transition-all">Cancel</button>
                                 <button type="submit" disabled={isSubmitting}
-                                    className="flex-1 py-2.5 text-sm bg-gradient-to-r from-purple-500 to-pink-600 text-white font-bold rounded-xl hover:shadow-lg transition-all disabled:opacity-40">
+                                    className="flex-1 py-2.5 text-sm bg-gradient-to-r from-purple-500 to-pink-600 text-white font-bold rounded-xl hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all disabled:opacity-40">
                                     {isSubmitting ? 'Submitting…' : 'Submit Entry'}
                                 </button>
                             </div>

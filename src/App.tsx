@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './pages/Login';
 import LandingPage from './pages/LandingPage';
 import { useAuthStore } from './store/authStore';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -16,7 +15,6 @@ import StudentResources from './pages/Student/StudentResources';
 import { GuideDashboardNew } from './pages/Guide/GuideDashboardNew';
 import { GuideGroups } from './pages/Guide/GuideGroups';
 import { GuideReviews } from './pages/Guide/GuideReviews';
-import { GuideTopicApproval } from './pages/Guide/GuideTopicApproval';
 
 // Coordinator
 import { CoordinatorDashboardNew } from './pages/Coordinator/CoordinatorDashboardNew';
@@ -25,7 +23,7 @@ import { CoordinatorUsers } from './pages/Coordinator/CoordinatorUsers';
 import { CoordinatorRubrics } from './pages/Coordinator/CoordinatorRubrics';
 import { CoordinatorSchedules } from './pages/Coordinator/CoordinatorSchedules';
 import { CoordinatorAnnouncements } from './pages/Coordinator/CoordinatorAnnouncements';
-// import { CoordinatorTopicApproval } from './pages/Coordinator/CoordinatorTopicApproval';
+import { CoordinatorTopicApproval } from './pages/Coordinator/CoordinatorTopicApproval';
 
 // Committee
 import { CommitteeEvaluations } from './pages/Committee/CommitteeEvaluations';
@@ -33,7 +31,6 @@ import { CommitteeEvaluationNew } from './pages/Committee/CommitteeEvaluationNew
 import { CommitteeDashboard } from './pages/Committee/CommitteeDashboard';
 import { CommitteeResults } from './pages/Committee/CommitteeResults';
 import { CommitteeHistoricSearch } from './pages/Committee/CommitteeHistoricSearch';
-import { CommitteeTopicApproval } from './pages/Committee/CommitteeTopicApproval';
 
 // Shared Pages
 import POPSOMapping from './pages/POPSOMapping';
@@ -58,11 +55,7 @@ export default function App() {
                 />
                 <Route
                     path="/login"
-                    element={
-                        isAuthenticated && user
-                            ? <Navigate to={`/${user.role.toLowerCase()}/dashboard`} replace />
-                            : <Login />
-                    }
+                    element={<Navigate to="/" replace />}
                 />
 
                 {/* ── Student ── */}
@@ -98,9 +91,6 @@ export default function App() {
                 <Route path="/guide/reviews" element={
                     <ProtectedRoute requiredRoles={['GUIDE']}><GuideReviews /></ProtectedRoute>
                 } />
-                <Route path="/guide/topics" element={
-                    <ProtectedRoute requiredRoles={['GUIDE']}><GuideTopicApproval /></ProtectedRoute>
-                } />
 
                 {/* ── Coordinator ── */}
                 <Route path="/coordinator/dashboard" element={
@@ -122,12 +112,7 @@ export default function App() {
                     <ProtectedRoute requiredRoles={['COORDINATOR']}><CoordinatorAnnouncements /></ProtectedRoute>
                 } />
                 <Route path="/coordinator/topics" element={
-                    <ProtectedRoute requiredRoles={['COORDINATOR']}>
-                        <div style={{ padding: '50px', color: 'white', background: '#1a1a2e' }}>
-                            <h1>Topic Approval - Under Maintenance</h1>
-                            <p>This feature is temporarily disabled.</p>
-                        </div>
-                    </ProtectedRoute>
+                    <ProtectedRoute requiredRoles={['COORDINATOR']}><CoordinatorTopicApproval /></ProtectedRoute>
                 } />
                 <Route path="/coordinator/po-pso" element={
                     <ProtectedRoute requiredRoles={['COORDINATOR']}><POPSOMapping /></ProtectedRoute>
@@ -148,9 +133,6 @@ export default function App() {
                 } />
                 <Route path="/committee/history" element={
                     <ProtectedRoute requiredRoles={['COMMITTEE']}><CommitteeHistoricSearch /></ProtectedRoute>
-                } />
-                <Route path="/committee/topics" element={
-                    <ProtectedRoute requiredRoles={['COMMITTEE']}><CommitteeTopicApproval /></ProtectedRoute>
                 } />
 
                 {/* ── Shared (All Roles) ── */}

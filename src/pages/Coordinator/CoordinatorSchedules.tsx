@@ -57,10 +57,11 @@ export const CoordinatorSchedules: React.FC = () => {
     const [editingMilestone, setEditingMilestone] = useState<string | null>(null);
     const [milestoneData, setMilestoneData] = useState<Record<string, { date: string; time: string }>>({});
     
-    const [selectedGroup, setSelectedGroup] = useState('');
+    const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
     const [selectedPhase, setSelectedPhase] = useState('REVIEW_1');
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
+    const [interval, setIntervalTime] = useState('15');
     const [venue, setVenue] = useState('');
     const [toast, setToast] = useState<string | null>(null);
 
@@ -129,20 +130,21 @@ export const CoordinatorSchedules: React.FC = () => {
 
     const handleCreateSchedule = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!token || !selectedGroup || !date || !time || !venue) return;
+        if (!token || selectedGroups.length === 0 || !date || !time || !venue) return;
 
         const presentationTime = new Date(`${date}T${time}`).toISOString();
 
         try {
-            await api.createSchedule(token, selectedGroup, selectedPhase, presentationTime, venue);
+            await api.createSchedule(token, selectedGroups, selectedPhase, presentationTime, venue, parseInt(interval, 10));
             setToast('Schedule successfully saved!');
             setTimeout(() => setToast(null), 3000);
             
             // Reset form
-            setSelectedGroup('');
+            setSelectedGroups([]);
             setDate('');
             setTime('');
             setVenue('');
+            setIntervalTime('15');
             
             fetchAllData();
         } catch (error) {
@@ -269,16 +271,26 @@ export const CoordinatorSchedules: React.FC = () => {
                         </div>
                         
                         <div>
-                            <label className="block text-xs font-bold text-white/50 uppercase tracking-widest mb-2">Select Group</label>
-                            <select 
-                                value={selectedGroup}
-                                onChange={e => setSelectedGroup(e.target.value)}
-                                required
-                                className="w-full px-3 py-2 bg-white/5 border border-white/10 text-white rounded-lg text-sm focus:outline-none focus:border-blue-500/50"
-                            >
-                                <option value="" className="bg-slate-800">Choose a group...</option>
-                                {groups.map(g => <option key={g.group_id} value={g.group_id} className="bg-slate-800">{g.group_name}</option>)}
-                            </select>
+                            <label className="block text-xs font-bold text-white/50 uppercase tracking-widest mb-2">Select Groups</label>
+                            <div className="max-h-48 overflow-y-auto bg-white/5 border border-white/10 rounded-lg p-2 space-y-1">
+                                {groups.map(g => (
+                                    <label key={g.group_id} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-md cursor-pointer transition-colors">
+                                        <input 
+                                            type="checkbox"
+                                            checked={selectedGroups.includes(g.group_id)}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setSelectedGroups(prev => [...prev, g.group_id]);
+                                                } else {
+                                                    setSelectedGroups(prev => prev.filter(id => id !== g.group_id));
+                                                }
+                                            }}
+                                            className="w-4 h-4 rounded bg-white/10 border border-white/20 text-emerald-500 focus:ring-emerald-500/50"
+                                        />
+                                        <span className="text-sm font-medium text-white">{g.group_name}</span>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -304,16 +316,33 @@ export const CoordinatorSchedules: React.FC = () => {
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block text-xs font-bold text-white/50 uppercase tracking-widest mb-2">Venue</label>
-                            <input 
-                                type="text" 
-                                required
-                                placeholder="e.g. Lab 402, Main Auditorium"
-                                value={venue}
-                                onChange={e => setVenue(e.target.value)}
-                                className="w-full px-3 py-2 bg-white/5 border border-white/10 text-white placeholder:text-white/20 rounded-lg text-sm focus:outline-none focus:border-blue-500/50"
-                            />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-white/50 uppercase tracking-widest mb-2">Venue</label>
+                                <input 
+                                    type="text" 
+                                    required
+                                    placeholder="e.g. Lab 402, Main Auditorium"
+                                    value={venue}
+                                    onChange={e => setVenue(e.target.value)}
+                                    className="w-full px-3 py-2 bg-white/5 border border-white/10 text-white placeholder:text-white/20 rounded-lg text-sm focus:outline-none focus:border-blue-500/50"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-white/50 uppercase tracking-widest mb-2">Time per Group</label>
+                                <select 
+                                    value={interval}
+                                    onChange={e => setIntervalTime(e.target.value)}
+                                    className="w-full px-3 py-2 bg-white/5 border border-white/10 text-white rounded-lg text-sm focus:outline-none focus:border-blue-500/50"
+                                >
+                                    <option value="10" className="bg-slate-800">10 Minutes</option>
+                                    <option value="15" className="bg-slate-800">15 Minutes</option>
+                                    <option value="20" className="bg-slate-800">20 Minutes</option>
+                                    <option value="30" className="bg-slate-800">30 Minutes</option>
+                                    <option value="45" className="bg-slate-800">45 Minutes</option>
+                                    <option value="60" className="bg-slate-800">1 Hour</option>
+                                </select>
+                            </div>
                         </div>
 
                         <button 

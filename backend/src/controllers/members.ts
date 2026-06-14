@@ -88,6 +88,7 @@ export async function getMembers(req: AuthenticatedRequest, res: Response): Prom
             `SELECT 
                 gm.student_id,
                 u.email,
+                u.full_name,
                 sp.prn_no,
                 sp.roll_no,
                 sp.batch_year,
@@ -187,5 +188,41 @@ export async function setLeader(req: AuthenticatedRequest, res: Response): Promi
     } catch (error) {
         console.error('Set leader error:', error);
         res.status(500).json({ error: 'Failed to set group leader' });
+    }
+}
+
+// Get available students (no group, same batch)
+export async function getAvailableStudents(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+        const studentId = req.user?.user_id;
+        if (!studentId) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
+
+        const studentProfile = await query('SELECT batch_year FROM student_profiles WHERE student_id = $1', [studentId]);
+        const batchYear = studentProfile[0]?.batch_year;
+
+        const params: any[] = [];
+        let batchFilter = '';
+        if (batchYear) {
+            batchFilter = 'WHERE sp.batch_year = $1';
+            params.push(batchYear);
+        }
+
+        const students = await query(
+            `SELECT sp.student_id, u.email, u.full_name, sp.prn_no, sp.roll_no, sp.batch_year, gm.group_id 
+             FROM student_profiles sp
+             JOIN users u ON sp.student_id = u.user_id
+             LEFT JOIN group_members gm ON sp.student_id = gm.student_id
+             ${batchFilter}
+             ORDER BY sp.prn_no ASC`,
+            params
+        );
+
+        res.status(200).json(students);
+    } catch (error) {
+        console.error('Get available students error:', error);
+        res.status(500).json({ error: 'Failed to fetch available students' });
     }
 }

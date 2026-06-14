@@ -65,7 +65,7 @@ export const CoordinatorDashboard: React.FC = () => {
 
     const handleLogout = () => {
         clearAuth();
-        navigate('/login');
+        navigate('/');
     };
 
     return (

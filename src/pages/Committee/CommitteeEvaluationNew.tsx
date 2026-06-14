@@ -24,6 +24,7 @@ export const CommitteeEvaluationNew: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [generalFeedback, setGeneralFeedback] = useState('');
     const [isDictating, setIsDictating] = useState(false);
+    const [hasConflict, setHasConflict] = useState(false);
     
     // Backchannel state
     const [backchannelMessages, setBackchannelMessages] = useState<{sender: string, text: string}[]>([
@@ -143,6 +144,7 @@ export const CommitteeEvaluationNew: React.FC = () => {
                 setSelectedGroup(null);
                 setScores({});
                 setGeneralFeedback('');
+                setHasConflict(false);
                 setActiveTab('queue');
             } catch (error) {
                 console.error("Failed to submit evaluation");
@@ -303,26 +305,45 @@ export const CommitteeEvaluationNew: React.FC = () => {
 
                     {/* Rubric */}
                     <div className="lg:col-span-2 rounded-2xl bg-white/[0.04] border border-white/[0.08] p-5">
-                        <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-5">Evaluation Rubric</h3>
-                        <div className="space-y-3 mb-6 max-h-80 overflow-y-auto pr-1">
-                            {evaluationCriteria.map((item, idx) => (
-                                <div key={idx} className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                                    <div className="flex items-center justify-between mb-2.5">
-                                        <label className="text-sm font-semibold text-white/80">{item.criteria}</label>
-                                        <span className="text-xs font-bold text-white/40">{scores[item.criteria] || 0}/{item.maxScore}</span>
-                                    </div>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        max={item.maxScore}
-                                        value={scores[item.criteria] || ''}
-                                        onChange={(e) => handleScoreChange(item.criteria, e.target.value)}
-                                        className="w-full px-3 py-2 bg-white/5 border border-white/10 text-white placeholder:text-white/25 rounded-lg text-sm focus:outline-none focus:border-amber-400/50 transition-all"
-                                        placeholder={`0 – ${item.maxScore}`}
-                                    />
-                                </div>
-                            ))}
+                        <div className="flex items-center justify-between mb-5">
+                            <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest">Evaluation Rubric</h3>
+                            <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20">
+                                <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Conflict of Interest?</span>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={hasConflict} onChange={() => setHasConflict(!hasConflict)} className="sr-only peer" />
+                                    <div className="w-8 h-4 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-red-500"></div>
+                                </label>
+                            </div>
                         </div>
+
+                        {hasConflict ? (
+                            <div className="mb-6 p-6 rounded-xl bg-red-500/5 border border-red-500/20 text-center">
+                                <p className="text-sm font-bold text-red-400 mb-1">Evaluation Disabled</p>
+                                <p className="text-xs text-white/50">You have declared a conflict of interest for this group. You cannot grade them.</p>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="space-y-3 mb-6 max-h-80 overflow-y-auto pr-1">
+                                    {evaluationCriteria.map((item, idx) => (
+                                        <div key={idx} className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                                            <div className="flex items-center justify-between mb-2.5">
+                                                <label className="text-sm font-semibold text-white/80">{item.criteria}</label>
+                                                <span className="text-xs font-bold text-white/40">{scores[item.criteria] || 0}/{item.maxScore}</span>
+                                            </div>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max={item.maxScore}
+                                                value={scores[item.criteria] || ''}
+                                                onChange={(e) => handleScoreChange(item.criteria, e.target.value)}
+                                                className="w-full px-3 py-2 bg-white/5 border border-white/10 text-white placeholder:text-white/25 rounded-lg text-sm focus:outline-none focus:border-amber-400/50 transition-all"
+                                                placeholder={`0 – ${item.maxScore}`}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
 
                         {/* General Feedback with Voice Dictation */}
                         <div className="mb-6">
@@ -355,14 +376,15 @@ export const CommitteeEvaluationNew: React.FC = () => {
 
                         <div className="flex gap-3">
                             <button
-                                onClick={() => { setSelectedGroup(null); setScores({}); setActiveTab('queue'); }}
+                                onClick={() => { setSelectedGroup(null); setScores({}); setHasConflict(false); setActiveTab('queue'); }}
                                 className="flex-1 px-4 py-2.5 text-sm text-white/50 border border-white/10 rounded-xl hover:bg-white/5 font-semibold transition-all"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleSubmitEvaluation}
-                                className="flex-1 px-4 py-2.5 text-sm bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl hover:shadow-lg hover:shadow-emerald-500/25 font-bold transition-all"
+                                disabled={hasConflict}
+                                className="flex-1 px-4 py-2.5 text-sm bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl hover:shadow-lg hover:shadow-emerald-500/25 font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Submit Evaluation
                             </button>

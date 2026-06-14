@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AppShell } from '../../layouts/AppShell';
 import { useAuthStore } from '../../store/authStore';
 import { api } from '../../lib/apiClient';
-import { BarChart2, Search, Trophy, Medal, Star, Download, Lock, Unlock, LockKeyhole, FileText, Loader2 } from 'lucide-react';
+import { BarChart2, Search, Trophy, Medal, Star, Download, Lock, Unlock, LockKeyhole, FileText, Loader2, Globe } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -217,14 +217,24 @@ export const CommitteeResults: React.FC = () => {
                         />
                     </div>
                     {isCoordinator && (
-                        <button 
-                            onClick={handleLockAll}
-                            disabled={lockingPhase !== null}
-                            className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white font-bold rounded-xl flex items-center gap-2 hover:shadow-lg hover:shadow-orange-500/20 active:scale-95 disabled:opacity-50 transition-all"
-                        >
-                            <LockKeyhole size={16} />
-                            {lockingPhase ? 'Locking...' : 'Lock All'}
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button 
+                                onClick={handleLockAll}
+                                disabled={lockingPhase !== null}
+                                className="px-4 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold rounded-xl flex items-center gap-2 hover:shadow-lg hover:shadow-purple-500/20 active:scale-95 disabled:opacity-50 transition-all"
+                            >
+                                <Globe size={16} />
+                                {lockingPhase ? 'Publishing...' : 'Approve for Publishing'}
+                            </button>
+                            <button 
+                                onClick={handleLockAll}
+                                disabled={lockingPhase !== null}
+                                className="px-3 py-2.5 bg-white/5 text-white/50 border border-white/10 font-bold rounded-xl flex items-center justify-center hover:bg-white/10 active:scale-95 disabled:opacity-50 transition-all"
+                                title="Lock All Evaluations"
+                            >
+                                <LockKeyhole size={16} />
+                            </button>
+                        </div>
                     )}
                     <button 
                         onClick={handleExportPDF}

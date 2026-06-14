@@ -6,7 +6,7 @@ const pool = new pg.Pool({
     password: process.env.DB_PASSWORD || 'postgres',
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432'),
-    database: process.env.DB_NAME || 'habit'
+    database: process.env.DB_NAME || 'protrack_auto'
 });
 
 async function seed() {

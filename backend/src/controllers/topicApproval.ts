@@ -10,19 +10,12 @@
 import { Response } from 'express';
 import { query } from '../config/database.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
+import { sendTopicApprovalEmail } from '../utils/emailService.js';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-const STAGE_FLOW: Record<string, { next: string; prev_approval: string }> = {
-    PENDING:             { next: 'GUIDE_APPROVED',       prev_approval: 'GUIDE' },
-    GUIDE_APPROVED:      { next: 'COMMITTEE_APPROVED',   prev_approval: 'COMMITTEE' },
-    COMMITTEE_APPROVED:  { next: 'APPROVED',             prev_approval: 'COORDINATOR' },
-};
-
-const STAGE_REJECT_MAP: Record<string, string> = {
-    PENDING:            'GUIDE_REJECTED',
-    GUIDE_APPROVED:     'COMMITTEE_REJECTED',
-    COMMITTEE_APPROVED: 'COORDINATOR_REJECTED',
+const STAGE_FLOW: Record<string, { next: string }> = {
+    PENDING: { next: 'APPROVED' },
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -47,21 +40,7 @@ async function getProposalWithHistory(proposalId: string) {
     return { ...proposals[0], history };
 }
 
-async function cascadeToNextPriority(groupId: string, rejectedPriority: number, userId: string): Promise<void> {
-    const nextPriority = rejectedPriority + 1;
-    if (nextPriority > 3) return; // No more options
-
-    // Activate the next priority proposal if it exists
-    const next = await query(
-        `SELECT proposal_id FROM project_proposals
-         WHERE group_id = $1 AND priority = $2`,
-        [groupId, nextPriority]
-    );
-    if (next.length > 0) {
-        // Next priority is already PENDING - it automatically becomes the active topic
-        // No status change needed - frontend shows next PENDING proposal
-    }
-}
+// Cascade logic removed because Coordinator reviews all 3 topics and selects one.
 
 // ─── Student Endpoints ───────────────────────────────────────────────────────
 
@@ -181,19 +160,15 @@ export async function getGroupTopics(req: AuthenticatedRequest, res: Response): 
 // GET /api/topics/pending/:stage — Get all proposals awaiting a specific stage
 export async function getPendingForStage(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-        const { stage } = req.params; // 'GUIDE' | 'COMMITTEE' | 'COORDINATOR'
+        const { stage } = req.params; // 'COORDINATOR'
 
-        // Map stage label to the approval_stage string that means "ready for this reviewer"
-        const stageFilterMap: Record<string, string> = {
-            GUIDE: 'PENDING',
-            COMMITTEE: 'GUIDE_APPROVED',
-            COORDINATOR: 'COMMITTEE_APPROVED',
-        };
+        if (stage.toUpperCase() !== 'COORDINATOR') {
+            res.status(403).json({ error: 'Only Coordinator can review topics.' });
+            return;
+        }
 
-        const filterStage = stageFilterMap[stage.toUpperCase()];
-        if (!filterStage) { res.status(400).json({ error: 'Invalid stage. Use GUIDE, COMMITTEE, or COORDINATOR' }); return; }
+        const filterStage = 'PENDING';
 
-        // For guides: only show their own assigned groups
         let sql = `
             SELECT p.*,
                    g.group_name,
@@ -214,13 +189,7 @@ export async function getPendingForStage(req: AuthenticatedRequest, res: Respons
         `;
 
         const params: any[] = [filterStage];
-        if (stage.toUpperCase() === 'GUIDE') {
-            // Guide sees only their assigned groups
-            sql += ` WHERE p.approval_stage = $1 AND g.guide_id = $2`;
-            params.push(req.user!.user_id);
-        } else {
-            sql += ` WHERE p.approval_stage = $1`;
-        }
+        sql += ` WHERE p.approval_stage = $1`;
 
         sql += ` GROUP BY p.proposal_id, g.group_name ORDER BY p.priority ASC, p.created_at ASC`;
 
@@ -259,20 +228,8 @@ export async function reviewTopic(req: AuthenticatedRequest, res: Response): Pro
         const currentStage = proposal.approval_stage;
 
         // Validate reviewer role matches expected stage
-        const roleStageMap: Record<string, string[]> = {
-            GUIDE: ['PENDING'],
-            COMMITTEE: ['GUIDE_APPROVED'],
-            COORDINATOR: ['COMMITTEE_APPROVED'],
-        };
-        const allowedStages = roleStageMap[reviewer.role] || [];
-        if (reviewer.role !== 'COORDINATOR' && !allowedStages.includes(currentStage)) {
-            res.status(403).json({ error: `Cannot review at stage '${currentStage}' as ${reviewer.role}` });
-            return;
-        }
-
-        // Guide can only review their own groups
-        if (reviewer.role === 'GUIDE' && proposal.guide_id !== reviewer.user_id) {
-            res.status(403).json({ error: 'You can only review proposals from your assigned groups' });
+        if (reviewer.role !== 'COORDINATOR') {
+            res.status(403).json({ error: `Only the Coordinator can review and approve topics.` });
             return;
         }
 
@@ -287,25 +244,15 @@ export async function reviewTopic(req: AuthenticatedRequest, res: Response): Pro
         }
 
         // Determine new stage
-        let newStage: string;
-        let stageLabel: string;
-
-        if (reviewer.role === 'GUIDE') stageLabel = 'GUIDE';
-        else if (reviewer.role === 'COMMITTEE') stageLabel = 'COMMITTEE';
-        else stageLabel = 'COORDINATOR';
-
-        if (decision === 'APPROVED') {
-            newStage = STAGE_FLOW[currentStage]?.next || 'APPROVED';
-        } else {
-            newStage = STAGE_REJECT_MAP[currentStage] || 'REJECTED';
-        }
+        const newStage = decision === 'APPROVED' ? 'APPROVED' : 'REJECTED';
+        const stageLabel = 'COORDINATOR';
 
         // Update proposal stage
         await query(
             `UPDATE project_proposals
              SET approval_stage = $1, is_approved = $2, updated_at = CURRENT_TIMESTAMP
              WHERE proposal_id = $3`,
-            [newStage, newStage === 'APPROVED', proposal_id]
+            [newStage, decision === 'APPROVED', proposal_id]
         );
 
         // Log decision in topic_approvals
@@ -315,13 +262,32 @@ export async function reviewTopic(req: AuthenticatedRequest, res: Response): Pro
             [proposal_id, stageLabel, decision, reviewer.user_id, comments || null, rejection_reason || null, plagiarismScore]
         );
 
-        // If rejected, handle cascade to next priority
-        if (decision === 'REJECTED') {
-            await cascadeToNextPriority(proposal.group_id, proposal.priority, reviewer.user_id);
+        // If APPROVED, update group status to WAITING_ALLOCATION and reject other topics
+        if (decision === 'APPROVED') {
+            await query(
+                `UPDATE project_groups SET status = 'WAITING_ALLOCATION', updated_at = CURRENT_TIMESTAMP WHERE group_id = $1`,
+                [proposal.group_id]
+            );
+            await query(
+                `UPDATE project_proposals SET approval_stage = 'REJECTED', is_approved = false, updated_at = CURRENT_TIMESTAMP WHERE group_id = $1 AND proposal_id != $2`,
+                [proposal.group_id, proposal_id]
+            );
         }
 
         // Get full updated proposal with history
         const updatedProposal = await getProposalWithHistory(proposal_id);
+
+        // Fetch student emails to send notification
+        const studentEmailsRes = await query(
+            `SELECT u.email FROM group_members gm
+             JOIN users u ON gm.student_id = u.user_id
+             WHERE gm.group_id = $1`,
+            [proposal.group_id]
+        );
+        const studentEmails = studentEmailsRes.map((r: any) => r.email).filter(Boolean);
+        const groupName = updatedProposal?.grp_name || 'Your Group';
+        
+        sendTopicApprovalEmail(studentEmails, groupName, proposal.title, decision as 'APPROVED'|'REJECTED', comments).catch(e => console.error("Email failed:", e));
 
         res.status(200).json({
             message: `Topic ${decision.toLowerCase()} at ${stageLabel} stage`,

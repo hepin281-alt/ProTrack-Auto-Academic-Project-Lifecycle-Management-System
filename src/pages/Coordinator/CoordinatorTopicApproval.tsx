@@ -3,7 +3,8 @@ import { AppShell } from '../../layouts/AppShell';
 import { api } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { TopicReviewShell, ProposalCard, Proposal, StageBadge, PriorityBadge } from '../shared/TopicApprovalComponents';
+import { TopicReviewShell, ProposalCard, StageBadge, PriorityBadge } from '../shared/TopicApprovalComponents';
+import type { Proposal } from '../shared/TopicApprovalComponents';
 import { BarChart2, Search, Loader2, CheckCircle2, Filter, AlertCircle, Upload } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -36,13 +37,9 @@ export const CoordinatorTopicApproval: React.FC = () => {
 
     const stageOptions = [
         { value: '', label: 'All Stages' },
-        { value: 'PENDING', label: 'Pending (Guide)' },
-        { value: 'GUIDE_APPROVED', label: 'Guide Approved' },
-        { value: 'COMMITTEE_APPROVED', label: 'Committee Approved' },
-        { value: 'APPROVED', label: 'Final Approved' },
-        { value: 'GUIDE_REJECTED', label: 'Guide Rejected' },
-        { value: 'COMMITTEE_REJECTED', label: 'Committee Rejected' },
-        { value: 'COORDINATOR_REJECTED', label: 'Coord. Rejected' },
+        { value: 'PENDING', label: 'Pending' },
+        { value: 'APPROVED', label: 'Approved' },
+        { value: 'COORDINATOR_REJECTED', label: 'Rejected' },
     ];
 
     return (
@@ -55,7 +52,7 @@ export const CoordinatorTopicApproval: React.FC = () => {
                     </div>
                     <h1 className="text-2xl font-black text-white">Topic Approvals — Coordinator</h1>
                 </div>
-                <p className="text-white/40 text-sm ml-11">Final approval authority on committee-approved topics</p>
+                <p className="text-white/40 text-sm ml-11">Review and finalize student project proposals</p>
             </div>
 
             {/* Tabs */}

@@ -191,12 +191,26 @@ export async function updateGroupStatus(req: AuthenticatedRequest, res: Response
         const { group_id } = req.params;
         const { status } = req.body;
 
-        const validStatuses = ['FORMING', 'WAITING_ALLOCATION', 'ACTIVE'];
+        const validStatuses = ['FORMING', 'WAITING_TOPIC_APPROVAL', 'WAITING_ALLOCATION', 'ACTIVE'];
         if (!validStatuses.includes(status)) {
             res.status(400).json({
                 error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
             });
             return;
+        }
+
+        // Enforcement rule: Must have exactly 3 topics before locking to WAITING_TOPIC_APPROVAL
+        if (status === 'WAITING_TOPIC_APPROVAL') {
+            const topicCount = await query(
+                `SELECT count(*) FROM project_proposals WHERE group_id = $1`,
+                [group_id]
+            );
+            if (parseInt(topicCount[0].count) < 3) {
+                res.status(400).json({
+                    error: 'You must submit exactly 3 project topics (Priority 1, 2, and 3) before you can Lock & Submit the group.'
+                });
+                return;
+            }
         }
 
         const result = await query(

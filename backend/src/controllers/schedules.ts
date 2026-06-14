@@ -4,18 +4,37 @@ import { AuthenticatedRequest } from '../middleware/auth.js';
 
 export async function createOrUpdateSchedule(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-        const { group_id, phase, presentation_time, venue } = req.body;
+        // Fallback to group_id for backward compatibility
+        const group_ids: string[] = req.body.group_ids || (req.body.group_id ? [req.body.group_id] : []);
+        const { phase, presentation_time, venue } = req.body;
 
-        const result = await query(
-            `INSERT INTO presentation_schedules (group_id, phase, presentation_time, venue)
-             VALUES ($1, $2, $3, $4)
-             ON CONFLICT (group_id, phase) 
-             DO UPDATE SET presentation_time = EXCLUDED.presentation_time, venue = EXCLUDED.venue
-             RETURNING *`,
-            [group_id, phase, presentation_time, venue]
-        );
+        if (group_ids.length === 0) {
+            res.status(400).json({ error: 'At least one group_id is required' });
+            return;
+        }
 
-        res.status(200).json(result[0]);
+        const intervalMinutes = req.body.interval_minutes ? parseInt(req.body.interval_minutes, 10) : 0;
+
+        const results = [];
+        const baseTime = new Date(presentation_time).getTime();
+
+        for (let i = 0; i < group_ids.length; i++) {
+            const groupId = group_ids[i];
+            const slotTimeMs = baseTime + (i * intervalMinutes * 60000);
+            const slotTimeIso = new Date(slotTimeMs).toISOString();
+
+            const result = await query(
+                `INSERT INTO presentation_schedules (group_id, phase, presentation_time, venue)
+                 VALUES ($1, $2, $3, $4)
+                 ON CONFLICT (group_id, phase) 
+                 DO UPDATE SET presentation_time = EXCLUDED.presentation_time, venue = EXCLUDED.venue
+                 RETURNING *`,
+                [groupId, phase, slotTimeIso, venue]
+            );
+            if (result.length > 0) results.push(result[0]);
+        }
+
+        res.status(200).json({ message: 'Schedules created successfully', schedules: results });
     } catch (error) {
         console.error('Schedule error:', error);
         res.status(500).json({ error: 'Failed to save schedule' });
