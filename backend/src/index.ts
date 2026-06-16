@@ -1,4 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
+import { createServer } from 'http';
+import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -13,13 +15,14 @@ import whitelistRoutes from './routes/whitelist.js';
 import evaluationRoutes from './routes/evaluations.js';
 import uploadRoutes from './routes/upload.js';
 import scheduleRoutes from './routes/schedules.js';
+import guideRoutes from './routes/guide.js';
 import { chatRouter } from './routes/chat.js';
 import { cronTasksRouter } from './routes/cronTasks.js';
 import tasksRoutes from './routes/tasks.js';
 import peerEvaluationRoutes from './routes/peerEvaluations.js';
 import resourcesRoutes from './routes/resources.js';
 import notesRoutes from './routes/notes.js';
-import poMappingRoutes from './routes/poMapping.js';
+import notificationsRoutes from './routes/notifications.js';
 import settingsRoutes from './routes/settings.js';
 import analyticsRoutes from './routes/analytics.js';
 import coordinatorActionRoutes from './routes/coordinator.js';
@@ -33,6 +36,7 @@ import { initCronJobs } from './cron/reminders.js';
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
 const PORT = process.env.PORT || 5001;
 
 const __filename = fileURLToPath(import.meta.url);
@@ -41,6 +45,26 @@ const __dirname = path.dirname(__filename);
 // Allow any localhost port for CORS
 const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
 const CORS_ORIGIN = /localhost/.test(corsOrigin) ? /localhost/ : corsOrigin;
+
+// Socket.IO Server
+export const io = new SocketIOServer(httpServer, {
+    cors: { origin: CORS_ORIGIN, methods: ['GET', 'POST'], credentials: true }
+});
+
+// ─── Socket.IO: Group Chat Rooms ──────────────────────────────────────────────
+io.on('connection', (socket) => {
+    // Client joins a specific group room
+    socket.on('join_group', (groupId: string) => {
+        socket.join(`group:${groupId}`);
+    });
+
+    // Client sends a message; broadcast to all in the room
+    socket.on('send_message', ({ groupId, message }: { groupId: string; message: any }) => {
+        io.to(`group:${groupId}`).emit('new_message', message);
+    });
+
+    socket.on('disconnect', () => {});
+});
 
 // ─── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors({ origin: CORS_ORIGIN, credentials: true }));
@@ -72,6 +96,9 @@ app.use('/api/auth', authRoutes);
 
 // Groups (includes /proposals, /logbooks, /members, /allocation sub-routes)
 app.use('/api/groups', groupRoutes);
+
+// Guide specific endpoints
+app.use('/api/guide', guideRoutes);
 
 // Whitelist (student + faculty)
 // Mounts: POST /api/coordinator/whitelist/upload
@@ -127,14 +154,12 @@ app.use('/api/resources', resourcesRoutes);
 //          POST /api/notes
 app.use('/api/notes', notesRoutes);
 
-// PO Mapping
-// Mounts: GET /api/po-mapping
-app.use('/api/po-mapping', poMappingRoutes);
 
 // Settings
 // Mounts: GET  /api/settings
 //          POST /api/settings
 app.use('/api/settings', settingsRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // Analytics
 // Mounts: GET /api/analytics/guide
@@ -209,9 +234,10 @@ async function startServer() {
             console.log('  Run: npm run db:init');
         }
 
-        app.listen(PORT, () => {
+        httpServer.listen(PORT, () => {
             console.log(`✓ ProTrack backend running on http://localhost:${PORT}`);
             console.log(`✓ CORS enabled for: ${CORS_ORIGIN}`);
+            console.log(`✓ Socket.IO real-time chat enabled`);
             initCronJobs();
         });
     } catch (error) {

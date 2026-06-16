@@ -48,3 +48,32 @@ export async function getGroupEvaluations(req: AuthenticatedRequest, res: Respon
         res.status(500).json({ error: 'Failed to fetch peer evaluations' });
     }
 }
+
+/**
+ * Returns aggregated peer evaluation summary per evaluatee.
+ * Does NOT expose individual evaluator identity — safe for student-facing views.
+ */
+export async function getGroupEvaluationsSummary(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+        const { group_id } = req.params;
+
+        const summary = await query(
+            `SELECT
+               pe.evaluatee_id,
+               u.full_name AS evaluatee_name,
+               ROUND(AVG(pe.score)::numeric, 2) AS avg_score,
+               COUNT(*) AS evaluation_count
+             FROM peer_evaluations pe
+             JOIN users u ON pe.evaluatee_id = u.user_id
+             WHERE pe.group_id = $1
+             GROUP BY pe.evaluatee_id, u.full_name
+             ORDER BY avg_score DESC`,
+            [group_id]
+        );
+
+        res.status(200).json(summary);
+    } catch (error) {
+        console.error('Get peer evaluations summary error:', error);
+        res.status(500).json({ error: 'Failed to fetch peer evaluations summary' });
+    }
+}

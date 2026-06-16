@@ -20,7 +20,7 @@ export const exportYearlyReport = async (req: Request, res: Response): Promise<v
         );
         
         // Simple JSON to CSV
-        const data = result.rows;
+        const data = result;
         if (data.length === 0) {
             res.send('No data available');
             return;
@@ -52,13 +52,13 @@ export const exportYearlyReport = async (req: Request, res: Response): Promise<v
 export const getOrphanStudents = async (req: Request, res: Response): Promise<void> => {
     try {
         const result = await query(
-            `SELECT u.user_id, u.email, sp.prn_no, sp.roll_no
+            `SELECT u.user_id as student_id, u.email, sp.prn_no, sp.roll_no, sp.batch_year, u.created_at
              FROM users u
              JOIN student_profiles sp ON u.user_id = sp.student_id
              LEFT JOIN group_members m ON u.user_id = m.student_id
              WHERE m.group_id IS NULL AND u.role = 'STUDENT'`
         );
-        res.json(result.rows);
+        res.json(result);
     } catch (error) {
         console.error('Error fetching orphan students:', error);
         res.status(500).json({ error: 'Failed to fetch orphan students' });
@@ -68,35 +68,47 @@ export const getOrphanStudents = async (req: Request, res: Response): Promise<vo
 export const autoGroupOrphans = async (req: Request, res: Response): Promise<void> => {
     try {
         const result = await query(
-            `SELECT u.user_id
+            `SELECT u.user_id, sp.batch_year
              FROM users u
              JOIN student_profiles sp ON u.user_id = sp.student_id
              LEFT JOIN group_members m ON u.user_id = m.student_id
-             WHERE m.group_id IS NULL AND u.role = 'STUDENT'`
+             WHERE m.group_id IS NULL AND u.role = 'STUDENT'
+             ORDER BY sp.batch_year ASC`
         );
         
-        const orphans = result.rows;
+        const orphans = result;
         let createdGroups = 0;
         
-        // Group in batches of 4
-        for (let i = 0; i < orphans.length; i += 4) {
-            const batch = orphans.slice(i, i + 4);
-            if (batch.length === 0) continue;
-            
-            const groupName = `Auto Group ${Math.floor(Math.random() * 10000)}`;
-            const groupResult = await query(
-                `INSERT INTO project_groups (group_name, status) VALUES ($1, 'WAITING_ALLOCATION') RETURNING group_id`,
-                [groupName]
-            );
-            const groupId = groupResult.rows[0].group_id;
-            
-            for (const student of batch) {
-                await query(
-                    `INSERT INTO group_members (group_id, student_id, is_leader) VALUES ($1, $2, $3)`,
-                    [groupId, student.user_id, student === batch[0]]
+        // Group orphans by their batch_year first
+        const orphansByBatch: Record<string, any[]> = {};
+        for (const orphan of orphans) {
+            const year = orphan.batch_year || 'Unknown';
+            if (!orphansByBatch[year]) orphansByBatch[year] = [];
+            orphansByBatch[year].push(orphan);
+        }
+        
+        // Group in batches of 4 per batch_year
+        for (const year in orphansByBatch) {
+            const yearOrphans = orphansByBatch[year];
+            for (let i = 0; i < yearOrphans.length; i += 4) {
+                const batch = yearOrphans.slice(i, i + 4);
+                if (batch.length === 0) continue;
+                
+                const groupName = `Auto Group (${year}) ${Math.floor(Math.random() * 10000)}`;
+                const groupResult = await query(
+                    `INSERT INTO project_groups (group_name, status) VALUES ($1, 'WAITING_ALLOCATION') RETURNING group_id`,
+                    [groupName]
                 );
+                const groupId = groupResult[0].group_id;
+                
+                for (const student of batch) {
+                    await query(
+                        `INSERT INTO group_members (group_id, student_id, is_leader) VALUES ($1, $2, $3)`,
+                        [groupId, student.user_id, student === batch[0]]
+                    );
+                }
+                createdGroups++;
             }
-            createdGroups++;
         }
 
         res.json({ message: 'Auto-grouping successful', groups_created: createdGroups });
@@ -115,7 +127,7 @@ export const getFacultyList = async (req: Request, res: Response): Promise<void>
              WHERE u.role IN ('GUIDE', 'COMMITTEE')
              ORDER BY u.full_name ASC`
         );
-        res.json(result.rows);
+        res.json(result);
     } catch (error) {
         console.error('Error fetching faculty list:', error);
         res.status(500).json({ error: 'Failed to fetch faculty list' });
@@ -137,19 +149,19 @@ export const updateGuideWorkload = async (req: Request, res: Response): Promise<
             [max_workload, faculty_id]
         );
 
-        if (result.rows.length === 0) {
+        if (result.length === 0) {
             res.status(404).json({ error: 'Faculty profile not found' });
             return;
         }
 
-        res.json({ message: 'Max workload updated successfully', profile: result.rows[0] });
+        res.json({ message: 'Max workload updated successfully', profile: result[0] });
     } catch (error) {
         console.error('Error updating guide workload:', error);
         res.status(500).json({ error: 'Failed to update guide workload' });
     }
 };
 
-export const deleteUser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const deleteUser = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
         const userRes = await query('SELECT email, role FROM users WHERE user_id = $1', [id]);
@@ -179,5 +191,17 @@ export const deleteUser = async (req: AuthenticatedRequest, res: Response): Prom
             return;
         }
         res.status(500).json({ error: 'Failed to delete user' });
+    }
+};
+
+export const getBatchYears = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const result = await query(
+            `SELECT DISTINCT batch_year FROM student_profiles WHERE batch_year IS NOT NULL ORDER BY batch_year DESC`
+        );
+        res.json({ years: result.map((r: any) => r.batch_year) });
+    } catch (error) {
+        console.error('Error fetching batch years:', error);
+        res.status(500).json({ error: 'Failed to fetch batch years' });
     }
 };

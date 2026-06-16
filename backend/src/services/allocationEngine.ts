@@ -41,21 +41,71 @@ export interface ScoredGuide extends GuideCandidate {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function jaccardSimilarity(a: string[], b: string[]): number {
-    if (a.length === 0 && b.length === 0) return 0;
-    const setA = new Set(a.map(t => t.toLowerCase().trim()));
-    const setB = new Set(b.map(t => t.toLowerCase().trim()));
-    const intersection = new Set([...setA].filter(x => setB.has(x)));
-    const union = new Set([...setA, ...setB]);
-    return union.size === 0 ? 0 : intersection.size / union.size;
+function calculateJaccardSimilarity(sourceTags: string[], targetTags: string[]): number {
+    if (sourceTags.length === 0 || targetTags.length === 0) return 0;
+    
+    // Tokenize tags by spaces, slashes, dashes to handle "AI/ML" matching "AI"
+    const tokenize = (tags: string[]) => {
+        const tokens = new Set<string>();
+        tags.forEach(t => {
+            t.toLowerCase().split(/[\s/\-_]+/).forEach(word => {
+                if (word.length > 1) tokens.add(word);
+            });
+        });
+        return tokens;
+    };
+
+    const sourceTokens = tokenize(sourceTags);
+    const targetTokens = tokenize(targetTags);
+    
+    let intersection = 0;
+    for (const token of sourceTokens) {
+        // Allow partial matches (e.g. 'web' matches 'web3')
+        for (const tToken of targetTokens) {
+            if (token.includes(tToken) || tToken.includes(token)) {
+                intersection++;
+                break;
+            }
+        }
+    }
+    
+    const union = sourceTokens.size + targetTokens.size - intersection;
+    return union === 0 ? 0 : intersection / union;
+}
+
+// ML Integration: Call the Python microservice for semantic similarity
+async function getMLSimilarities(sourceTags: string[], targetsTags: string[][]): Promise<number[]> {
+    if (targetsTags.length === 0) return [];
+    if (sourceTags.length === 0) return targetsTags.map(() => 0.0);
+    
+    try {
+        const response = await fetch('http://127.0.0.1:8000/similarity', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                source: sourceTags.join(', '),
+                targets: targetsTags.map(tags => tags.join(', '))
+            })
+        });
+        
+        if (!response.ok) {
+            console.error(`ML Microservice Error: HTTP ${response.status}`);
+            return targetsTags.map(targetTags => calculateJaccardSimilarity(sourceTags, targetTags));
+        }
+        
+        const data = (await response.json()) as any;
+        return data.scores || targetsTags.map(targetTags => calculateJaccardSimilarity(sourceTags, targetTags));
+    } catch (e) {
+        console.warn('Failed to communicate with ML Microservice. Falling back to Jaccard similarity.');
+        return targetsTags.map(targetTags => calculateJaccardSimilarity(sourceTags, targetTags));
+    }
 }
 
 // ─── Scoring ─────────────────────────────────────────────────────────────────
 
-export function scoreGuide(guide: GuideCandidate, group: GroupToAllocate): ScoredGuide {
-    // 1. Expertise match (40 pts)
-    const jaccard = jaccardSimilarity(guide.expertise_tags, group.domain_tags);
-    const expertise_match = parseFloat((jaccard * 40).toFixed(2));
+export function scoreGuide(guide: GuideCandidate, group: GroupToAllocate, mlScore: number): ScoredGuide {
+    // 1. Expertise match (40 pts) via ML Semantic Search
+    const expertise_match = parseFloat((mlScore * 40).toFixed(2));
 
     // 2. Workload score (30 pts) — fuller guides score lower
     const available = guide.max_workload - guide.current_workload;
@@ -141,8 +191,10 @@ export async function rankGuidesForGroup(groupId: string): Promise<ScoredGuide[]
     if (groups.length === 0) return [];
     const group = groups[0];
 
+    const mlScores = await getMLSimilarities(group.domain_tags, guides.map(g => g.expertise_tags));
+
     return guides
-        .map(guide => scoreGuide(guide, group))
+        .map((guide, idx) => scoreGuide(guide, group, mlScores[idx]))
         .sort((a, b) => b.score - a.score);
 }
 
@@ -181,8 +233,10 @@ export async function runBatchAllocation(
             continue;
         }
 
+        const mlScores = await getMLSimilarities(group.domain_tags, guides.map(g => g.expertise_tags));
+        
         const ranked = guides
-            .map(g => scoreGuide(g, group))
+            .map((g, idx) => scoreGuide(g, group, mlScores[idx]))
             .sort((a, b) => b.score - a.score);
 
         const best = ranked[0];

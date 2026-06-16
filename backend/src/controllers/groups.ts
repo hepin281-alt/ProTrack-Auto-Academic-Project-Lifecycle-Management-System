@@ -57,7 +57,7 @@ export async function createGroup(req: AuthenticatedRequest, res: Response): Pro
 // Get groups filtered by role
 export async function getGroups(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-        const { status } = req.query;
+        const { status, batch_year } = req.query;
         const role = req.user?.role;
         const userId = req.user?.user_id;
         const params: unknown[] = [];
@@ -77,14 +77,27 @@ export async function getGroups(req: AuthenticatedRequest, res: Response): Promi
                 LEFT JOIN group_members gm2 ON gm2.group_id = g.group_id
             `;
             params.push(userId);
-            if (status) { sql += ` WHERE g.status = $${params.length + 1}`; params.push(status); }
+            const conditions = [];
+            if (status) { params.push(status); conditions.push(`g.status = $${params.length}`); }
+            if (batch_year) {
+                params.push(parseInt(batch_year as string, 10));
+                conditions.push(`EXISTS (
+                    SELECT 1 FROM group_members gm_sub 
+                    JOIN student_profiles sp ON gm_sub.student_id = sp.student_id
+                    WHERE gm_sub.group_id = g.group_id AND sp.batch_year = $${params.length}
+                )`);
+            }
+            if (conditions.length > 0) { sql += ` WHERE ` + conditions.join(' AND '); }
             sql += ` GROUP BY g.group_id, u.email ORDER BY g.created_at DESC`;
         } else if (role === 'GUIDE') {
             // Guides see groups assigned to them
             sql = `
                 SELECT g.group_id, g.group_name, g.status, g.guide_id,
                        u.email as guide_email,
-                       COUNT(gm.student_id) as member_count,
+                       f.max_workload,
+                       COUNT(DISTINCT gm.student_id) as member_count,
+                       (SELECT COUNT(*) FROM logbooks l WHERE l.group_id = g.group_id) as logbook_count,
+                       (SELECT COUNT(*) FROM logbooks l WHERE l.group_id = g.group_id AND l.guide_status = 'APPROVED') as approved_logbook_count,
                        g.created_at, g.updated_at
                 FROM project_groups g
                 LEFT JOIN faculty_profiles f ON g.guide_id = f.faculty_id
@@ -93,8 +106,18 @@ export async function getGroups(req: AuthenticatedRequest, res: Response): Promi
                 WHERE g.guide_id = $1
             `;
             params.push(userId);
-            if (status) { sql += ` AND g.status = $${params.length + 1}`; params.push(status); }
-            sql += ` GROUP BY g.group_id, u.email ORDER BY g.created_at DESC`;
+            const conditions = [];
+            if (status) { params.push(status); conditions.push(`g.status = $${params.length}`); }
+            if (batch_year) {
+                params.push(parseInt(batch_year as string, 10));
+                conditions.push(`EXISTS (
+                    SELECT 1 FROM group_members gm_sub 
+                    JOIN student_profiles sp ON gm_sub.student_id = sp.student_id
+                    WHERE gm_sub.group_id = g.group_id AND sp.batch_year = $${params.length}
+                )`);
+            }
+            if (conditions.length > 0) { sql += ` AND ` + conditions.join(' AND '); }
+            sql += ` GROUP BY g.group_id, u.email, f.max_workload ORDER BY g.created_at DESC`;
         } else {
             // Coordinators and Committee see all groups
             sql = `
@@ -107,7 +130,17 @@ export async function getGroups(req: AuthenticatedRequest, res: Response): Promi
                 LEFT JOIN users u ON u.user_id = f.faculty_id
                 LEFT JOIN group_members gm ON gm.group_id = g.group_id
             `;
-            if (status) { sql += ` WHERE g.status = $${params.length + 1}`; params.push(status); }
+            const conditions = [];
+            if (status) { params.push(status); conditions.push(`g.status = $${params.length}`); }
+            if (batch_year) {
+                params.push(parseInt(batch_year as string, 10));
+                conditions.push(`EXISTS (
+                    SELECT 1 FROM group_members gm_sub 
+                    JOIN student_profiles sp ON gm_sub.student_id = sp.student_id
+                    WHERE gm_sub.group_id = g.group_id AND sp.batch_year = $${params.length}
+                )`);
+            }
+            if (conditions.length > 0) { sql += ` WHERE ` + conditions.join(' AND '); }
             sql += ` GROUP BY g.group_id, u.email ORDER BY g.created_at DESC`;
         }
 

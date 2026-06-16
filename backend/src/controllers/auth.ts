@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { query } from '../config/database.js';
 import { generateToken } from '../utils/jwt.js';
 import { hashPassword, comparePassword } from '../utils/password.js';
+import { parsePRN } from '../utils/prnParser.js';
 
 interface LoginRequest {
     email: string;
@@ -158,9 +159,13 @@ export async function register(req: Request, res: Response): Promise<void> {
                 return;
             }
 
+            const { batch_year: parsedBatch, roll_no: parsedRoll } = parsePRN(prn_no);
+            const finalBatch = batch_year || parsedBatch;
+            const finalRoll = roll_no || parsedRoll;
+
             await query(
                 'INSERT INTO student_profiles (student_id, prn_no, roll_no, batch_year) VALUES ($1, $2, $3, $4)',
-                [newUser.user_id, prn_no, roll_no, batch_year]
+                [newUser.user_id, prn_no, finalRoll, finalBatch]
             );
         } else if (role === 'GUIDE') {
             const tags = (expertise_tags || []).map((t: string) => t.trim().toLowerCase()).filter(Boolean);
@@ -183,8 +188,8 @@ export async function register(req: Request, res: Response): Promise<void> {
             full_name: newUser.full_name,
             role: newUser.role,
             prn_no: prn_no || null,
-            roll_no: roll_no || null,
-            batch_year: batch_year || null,
+            roll_no: roll_no || parsePRN(prn_no || '').roll_no || null,
+            batch_year: batch_year || parsePRN(prn_no || '').batch_year || null,
             token
         });
     } catch (error) {
@@ -195,7 +200,7 @@ export async function register(req: Request, res: Response): Promise<void> {
 
 export async function claimAccount(req: Request, res: Response): Promise<void> {
     try {
-        const { role, email, password, prn_no, employee_id } = req.body;
+        const { role, email, password, prn_no, employee_id, expertise_tags } = req.body;
 
         if (!role || !email || !password) {
             res.status(400).json({ error: 'Role, email, and password are required' });
@@ -238,20 +243,20 @@ export async function claimAccount(req: Request, res: Response): Promise<void> {
                 [email, passwordHash, whitelisted[0].full_name]
             );
             const newUser = userResult[0];
-            const currentYear = new Date().getFullYear();
+            const { batch_year: parsedBatch, roll_no: parsedRoll } = parsePRN(prn_no);
             await query(
                 'INSERT INTO student_profiles (student_id, prn_no, roll_no, batch_year) VALUES ($1, $2, $3, $4)',
-                [newUser.user_id, prn_no, prn_no, currentYear]
+                [newUser.user_id, prn_no, parsedRoll, parsedBatch]
             );
             await query('UPDATE student_whitelist SET is_claimed = true WHERE id = $1', [whitelisted[0].id]);
 
             const token = generateToken({ user_id: newUser.user_id, email: newUser.email, role: newUser.role });
-            res.status(201).json({ user_id: newUser.user_id, email: newUser.email, full_name: newUser.full_name, role: newUser.role, prn_no, token });
+            res.status(201).json({ user_id: newUser.user_id, email: newUser.email, full_name: newUser.full_name, role: newUser.role, prn_no, roll_no: parsedRoll, batch_year: parsedBatch, token });
 
         } else if (role === 'GUIDE' || role === 'COMMITTEE' || role === 'COORDINATOR') {
             // Faculty/Committee claim: verify email (+ optional employee_id) against faculty_whitelist
             let whereClause = 'WHERE email = $1 AND role = $2';
-            let params: any[] = [email, role];
+            const params: any[] = [email, role];
 
             if (employee_id) {
                 whereClause += ' AND employee_id = $3';
@@ -280,9 +285,10 @@ export async function claimAccount(req: Request, res: Response): Promise<void> {
 
             // Create faculty profile for GUIDE role
             if (role === 'GUIDE') {
+                const tagsArray = expertise_tags && Array.isArray(expertise_tags) ? expertise_tags : [];
                 await query(
-                    'INSERT INTO faculty_profiles (faculty_id) VALUES ($1)',
-                    [newUser.user_id]
+                    'INSERT INTO faculty_profiles (faculty_id, expertise_tags) VALUES ($1, $2)',
+                    [newUser.user_id, tagsArray]
                 );
             }
 

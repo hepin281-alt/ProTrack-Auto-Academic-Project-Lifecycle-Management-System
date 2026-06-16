@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getResources, createResource } from '../controllers/resources.js';
+import { getResources, createResource, getGlobalResources } from '../controllers/resources.js';
 import { authenticateRequest } from '../middleware/auth.js';
 
 import multer from 'multer';
@@ -21,6 +21,7 @@ const upload = multer({ storage });
 const router = Router();
 
 router.use(authenticateRequest);
+router.get('/global/all', getGlobalResources);
 router.get('/:group_id', getResources);
 router.post('/', upload.single('file'), createResource);
 

@@ -252,9 +252,9 @@ export async function updateLogbook(req: AuthenticatedRequest, res: Response): P
     }
 };
 
-export const bulkApproveLogbooks = async (req: Request, res: Response): Promise<void> => {
+export const bulkApproveLogbooks = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-        const { logbook_ids } = req.body;
+        const { logbook_ids } = req.body as any;
         if (!Array.isArray(logbook_ids) || logbook_ids.length === 0) {
             res.status(400).json({ error: 'logbook_ids array is required' });
             return;
@@ -268,7 +268,7 @@ export const bulkApproveLogbooks = async (req: Request, res: Response): Promise<
             [logbook_ids]
         );
 
-        res.json({ message: 'Logbooks approved successfully', count: result.rowCount });
+        res.json({ message: 'Logbooks approved successfully', count: result.length });
     } catch (error) {
         console.error('Error in bulkApproveLogbooks:', error);
         res.status(500).json({ error: 'Failed to bulk approve logbooks' });

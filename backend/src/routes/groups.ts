@@ -3,6 +3,7 @@ import * as groupController from '../controllers/groups.js';
 import * as memberController from '../controllers/members.js';
 import * as logbookController from '../controllers/logbooks.js';
 import * as allocationController from '../controllers/allocations.js';
+import * as guideController from '../controllers/guide.js';
 import { authenticateRequest, authorize } from '../middleware/auth.js';
 
 const router = Router();
@@ -22,6 +23,10 @@ router.post('/:group_id/members', authorize('STUDENT'), memberController.addMemb
 router.get('/:group_id/members', memberController.getMembers);
 router.delete('/:group_id/members/:student_id', authorize('STUDENT'), memberController.removeMember);
 router.patch('/:group_id/members/:student_id/leader', authorize('STUDENT'), memberController.setLeader);
+
+// Group Meetings and Signoffs
+router.get('/:group_id/meetings', guideController.getMeetings);
+router.get('/:group_id/signoffs', guideController.getSignoffs);
 
 // Logbook endpoints
 router.post('/:group_id/logbooks', authorize('STUDENT'), logbookController.submitLogbook);

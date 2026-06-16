@@ -1,6 +1,22 @@
 import { Request, Response } from 'express';
 import { query } from '../config/database.js';
 
+export const getGlobalResources = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const result = await query(
+            `SELECT r.*, u.email as uploaded_by_email 
+             FROM group_resources r
+             LEFT JOIN users u ON r.uploaded_by = u.user_id
+             WHERE r.group_id IS NULL
+             ORDER BY r.created_at DESC`
+        );
+        res.json(result);
+    } catch (error) {
+        console.error('Error fetching global resources:', error);
+        res.status(500).json({ error: 'Failed to fetch global resources' });
+    }
+};
+
 export const getResources = async (req: Request, res: Response): Promise<void> => {
     try {
         const { group_id } = req.params;
@@ -36,7 +52,7 @@ export const createResource = async (req: Request, res: Response): Promise<void>
             `INSERT INTO group_resources (group_id, title, url, uploaded_by, resource_type, description, category, file_path)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
              RETURNING *`,
-            [group_id, title, url || null, user_id, resource_type, description || null, category || 'General', file_path]
+            [group_id || null, title, url || null, user_id, resource_type, description || null, category || 'General', file_path]
         );
         res.status(201).json(result[0]);
     } catch (error) {

@@ -219,7 +219,7 @@ export function generateMarksheet(
                     { header: 'Roll No.', w: pt(37), align: 'center' },
                 ],
                 groupData.members.map((m, i) => [
-                    [[i + 1]], [[m.full_name]], [[m.prn_no || '—']], [[m.roll_no || '—']]
+                    [i + 1], [m.full_name], [m.prn_no || '—'], [m.roll_no || '—']
                 ]),
                 M, y
             );
@@ -241,10 +241,10 @@ export function generateMarksheet(
                     ? (Number(ev.total_marks) >= 80 ? C.green : Number(ev.total_marks) >= 40 ? C.dark : C.red)
                     : C.midGray;
                 return [
-                    [[phaseLabel[phase]]],
-                    [[marks, color]],
-                    [[ev?.evaluator_name ?? '—']],
-                    [[ev ? new Date(ev.created_at).toLocaleDateString('en-IN') : 'Pending']],
+                    [phaseLabel[phase]],
+                    [marks, color],
+                    [ev?.evaluator_name ?? '—'],
+                    [ev ? new Date(ev.created_at).toLocaleDateString('en-IN') : 'Pending'],
                 ];
             });
 
@@ -276,7 +276,7 @@ export function generateMarksheet(
             if (withRubric) {
                 y = sectionBar(doc, `Rubric Score Breakdown — ${phaseLabel[withRubric.phase]}`, y);
                 const rubricRows = Object.entries(withRubric.rubric_scores!).map(([k, v]) => [
-                    [[k]], [[String(v), C.blue]]
+                    [k], [String(v), C.blue]
                 ]);
                 y = drawTable(doc,
                     [{ header: 'Criterion', w: pt(130) }, { header: 'Score', w: pt(40), align: 'center' }],
@@ -345,15 +345,15 @@ export function generateBatchReport(
             // Paginate rows
             const ROWS_PER_PAGE = 22;
             const allRows = allGroupsData.map((g, i) => [
-                [[i + 1]],
-                [[g.group_name.slice(0, 30)]],
-                [[g.guide_name.slice(0, 22)]],
-                [[String(g.member_count)]],
-                [[g.review1_marks != null ? String(g.review1_marks.toFixed(1)) : '—']],
-                [[g.review2_marks != null ? String(g.review2_marks.toFixed(1)) : '—']],
-                [[g.review3_marks != null ? String(g.review3_marks.toFixed(1)) : '—']],
-                [[g.final_marks   != null ? String(g.final_marks.toFixed(1))   : '—']],
-                [[g.total_marks.toFixed(1), g.total_marks >= 40 ? C.green : C.red]],
+                [i + 1],
+                [g.group_name.slice(0, 30)],
+                [g.guide_name.slice(0, 22)],
+                [String(g.member_count)],
+                [g.review1_marks != null ? String(g.review1_marks.toFixed(1)) : '—'],
+                [g.review2_marks != null ? String(g.review2_marks.toFixed(1)) : '—'],
+                [g.review3_marks != null ? String(g.review3_marks.toFixed(1)) : '—'],
+                [g.final_marks   != null ? String(g.final_marks.toFixed(1))   : '—'],
+                [g.total_marks.toFixed(1), g.total_marks >= 40 ? C.green : C.red],
             ]);
 
             const cols = [
@@ -435,13 +435,13 @@ export function generateComplianceReport(
                 const rateColor = r.compliance_rate >= 80 ? C.green : r.compliance_rate >= 60 ? C.gold : C.red;
                 const guideName = r.guide_name || (r.guide_email ? r.guide_email.split('@')[0] : 'TBD');
                 return [
-                    [[i + 1]],
-                    [[r.group_name.slice(0, 32)]],
-                    [[guideName.slice(0, 24)]],
-                    [[String(r.weeks_active)]],
-                    [[String(r.logbooks_submitted)]],
-                    [[`${r.compliance_rate.toFixed(1)}%`, rateColor]],
-                    [[r.status.replace('_', ' ').toUpperCase(), rateColor]],
+                    [i + 1],
+                    [r.group_name.slice(0, 32)],
+                    [guideName.slice(0, 24)],
+                    [String(r.weeks_active)],
+                    [String(r.logbooks_submitted)],
+                    [`${r.compliance_rate.toFixed(1)}%`, rateColor],
+                    [r.status.replace('_', ' ').toUpperCase(), rateColor],
                 ];
             });
 

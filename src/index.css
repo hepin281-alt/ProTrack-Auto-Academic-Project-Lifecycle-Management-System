@@ -1,7 +1,5 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:is(.dark *));
-
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -27,29 +25,9 @@
   --color-ring: var(--ring);
 }
 
+/* ── Always dark — no light mode ── */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-}
-
-.dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -80,7 +58,7 @@
 
   /* Premium Global Styles */
   ::selection {
-    background: rgba(168, 85, 247, 0.3); /* Purple-500 translucent */
+    background: rgba(168, 85, 247, 0.3);
     color: white;
   }
 
@@ -105,10 +83,24 @@
 
   html {
     scroll-behavior: smooth;
+    color-scheme: dark;
+  }
+
+  /* Force dark color scheme so browser autofill uses dark background */
+  input, select, textarea {
+    color-scheme: dark;
   }
 
   input::placeholder { color: rgba(255,255,255,0.2); }
-  input:-webkit-autofill { -webkit-box-shadow: 0 0 0 1000px #0a0015 inset !important; -webkit-text-fill-color: white !important; }
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #0f0020 inset !important;
+    -webkit-text-fill-color: white !important;
+    caret-color: white !important;
+    transition: background-color 9999s ease-in-out 0s;
+  }
 }
 
 @layer utilities {

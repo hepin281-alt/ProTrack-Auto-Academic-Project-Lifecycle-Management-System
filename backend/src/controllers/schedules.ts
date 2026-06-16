@@ -51,7 +51,7 @@ export async function getSchedules(req: AuthenticatedRequest, res: Response): Pr
             FROM presentation_schedules s
             JOIN project_groups g ON s.group_id = g.group_id
         `;
-        let params: any[] = [];
+        const params: any[] = [];
 
         if (role === 'STUDENT') {
             sql += ` JOIN group_members gm ON gm.group_id = g.group_id WHERE gm.student_id = $1`;
@@ -84,12 +84,12 @@ export async function getSmartSlots(req: AuthenticatedRequest, res: Response): P
         const bookedTimes = existingSchedules.map((row: any) => new Date(row.presentation_time).getTime());
         
         const availableSlots = [];
-        let currentDate = new Date();
+        const currentDate = new Date();
         currentDate.setHours(9, 0, 0, 0); // Start at 9 AM today
         
         // Check next 5 days
         for (let day = 0; day < 5; day++) {
-            let slotTime = new Date(currentDate);
+            const slotTime = new Date(currentDate);
             slotTime.setDate(slotTime.getDate() + day);
             
             // From 9 AM to 4 PM (meaning 4-5 PM is the last slot)

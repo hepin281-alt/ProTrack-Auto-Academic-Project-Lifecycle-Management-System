@@ -1,0 +1,6 @@
+employee_id,email,full_name,role
+EMP1001,guide1@university.edu,Dr. Alan Turing,GUIDE
+EMP1002,guide2@university.edu,Dr. Grace Hopper,GUIDE
+EMP1003,guide3@university.edu,Prof. John von Neumann,GUIDE
+EMP2001,committee1@university.edu,Dr. Ada Lovelace,COMMITTEE
+EMP2002,committee2@university.edu,Dr. Claude Shannon,COMMITTEE

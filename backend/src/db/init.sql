@@ -241,10 +241,11 @@ CREATE TABLE student_notes (
 CREATE INDEX idx_notes_student ON student_notes(student_id);
 
 -- Create rubric_templates table
-CREATE TABLE rubric_templates (
+CREATE TABLE IF NOT EXISTS rubric_templates (
     template_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) UNIQUE NOT NULL,
     schema JSONB NOT NULL,
+    target_phase review_phase NOT NULL DEFAULT 'FINAL',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -264,17 +265,6 @@ CREATE INDEX idx_milestones_batch ON batch_milestones(batch_year);
 CREATE INDEX idx_milestones_key ON batch_milestones(milestone_key);
 CREATE INDEX idx_milestones_date ON batch_milestones(due_date);
 
--- Create po_pso_mappings table
-CREATE TABLE po_pso_mappings (
-    mapping_id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    criterion_id  VARCHAR(50) NOT NULL,
-    mapping_type  VARCHAR(10) NOT NULL CHECK (mapping_type IN ('PO','PSO')),
-    outcome_key   VARCHAR(10) NOT NULL,
-    level         INT NOT NULL CHECK (level >= 0 AND level <= 3),
-    updated_by    UUID REFERENCES users(user_id),
-    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(criterion_id, mapping_type, outcome_key)
-);
 
 -- Enforce: each group can have at most one proposal per priority (1, 2, 3)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_proposals_group_priority
@@ -398,3 +388,44 @@ INSERT INTO global_settings (key, value) VALUES
     ('current_batch_year', '2024'),
     ('milestone_reminder_enabled', 'true')
 ON CONFLICT (key) DO NOTHING;
+
+-- ============================================================
+-- Guide Features: Meetings and Signoffs
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS group_meetings (
+    meeting_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    group_id UUID NOT NULL REFERENCES project_groups(group_id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    scheduled_at TIMESTAMP NOT NULL,
+    notes TEXT,
+    attendance JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_group_meetings_group ON group_meetings(group_id);
+
+CREATE TABLE IF NOT EXISTS group_signoffs (
+    signoff_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    group_id UUID NOT NULL REFERENCES project_groups(group_id) ON DELETE CASCADE,
+    document_type VARCHAR(50) NOT NULL,
+    status VARCHAR(20) DEFAULT 'PENDING',
+    comments TEXT,
+    signed_by UUID REFERENCES users(user_id) ON DELETE SET NULL,
+    signed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(group_id, document_type)
+);
+CREATE INDEX IF NOT EXISTS idx_group_signoffs_group ON group_signoffs(group_id);
+
+-- ============================================================
+-- Notification Read Status (DB-backed, replaces localStorage)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS notification_reads (
+    user_id    UUID REFERENCES users(user_id) ON DELETE CASCADE,
+    message_id UUID REFERENCES chat_messages(message_id) ON DELETE CASCADE,
+    read_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, message_id)
+);
+CREATE INDEX IF NOT EXISTS idx_notification_reads_user ON notification_reads(user_id);
+

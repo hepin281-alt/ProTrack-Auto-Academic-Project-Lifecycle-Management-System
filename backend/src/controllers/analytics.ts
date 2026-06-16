@@ -222,3 +222,27 @@ export const exportLogbookCompliance = async (req: AuthenticatedRequest, res: Re
         res.status(500).json({ error: 'Failed to export logbook compliance' });
     }
 };
+
+// Get system-wide stats
+export const getSystemStats = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        const studentCount = await query(`SELECT COUNT(*) as count FROM users WHERE role = 'STUDENT'`);
+        const groupStats = await query(`
+            SELECT 
+                COUNT(*) as total_groups,
+                SUM(CASE WHEN status = 'ACTIVE' THEN 1 ELSE 0 END) as active_groups,
+                SUM(CASE WHEN status = 'WAITING_ALLOCATION' THEN 1 ELSE 0 END) as unassigned_groups
+            FROM project_groups
+        `);
+
+        res.status(200).json({
+            total_students: parseInt(studentCount[0].count),
+            total_groups: parseInt(groupStats[0].total_groups || '0'),
+            active_groups: parseInt(groupStats[0].active_groups || '0'),
+            unassigned_groups: parseInt(groupStats[0].unassigned_groups || '0')
+        });
+    } catch (error) {
+        console.error('Error fetching system stats:', error);
+        res.status(500).json({ error: 'Failed to fetch system stats' });
+    }
+};

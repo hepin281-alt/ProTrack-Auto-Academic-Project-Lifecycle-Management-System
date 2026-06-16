@@ -83,13 +83,13 @@ export const api = {
     },
 
     autoGroupOrphans: (token: string) =>
-        apiCall<any>('/coordinator/auto-group', { token, method: 'POST' }),
+        apiCall<any>('/coordinator/action/auto-group', { token, method: 'POST' }),
     
     getFacultyList: (token: string) =>
-        apiCall<any[]>('/coordinator/faculty', { token, method: 'GET' }),
+        apiCall<any[]>('/coordinator/action/faculty', { token, method: 'GET' }),
         
     updateGuideWorkload: (token: string, facultyId: string, maxWorkload: number) =>
-        apiCall<any>(`/coordinator/faculty/${facultyId}/workload`, {
+        apiCall<any>(`/coordinator/action/faculty/${facultyId}/workload`, {
             token,
             method: 'PATCH',
             body: JSON.stringify({ max_workload: maxWorkload })
@@ -140,9 +140,10 @@ export const api = {
         apiCall<any>(`/coordinator/action/users/${id}`, { token, method: 'DELETE' }),
 
     // Group endpoints
-    getGroups: (token: string, status?: string) => {
+    getGroups: (token: string, status?: string, batchYear?: number) => {
         const params = new URLSearchParams();
         if (status) params.append('status', status);
+        if (batchYear) params.append('batch_year', batchYear.toString());
         return apiCall<any[]>(`/groups${params.toString() ? '?' + params : ''}`, {
             token,
             method: 'GET'
@@ -424,12 +425,20 @@ export const api = {
     getGroupResources: (token: string, groupId: string) =>
         apiCall<any[]>(`/resources/${groupId}`, { token, method: 'GET' }),
         
-    createResource: async (token: string, formData: FormData) => {
-        const response = await fetch(`${API_BASE}/resources`, {
+    createResource: (token: string, groupId: string, title: string, url: string) =>
+        apiCall<any>('/resources', {
+            token,
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
+            body: JSON.stringify({ group_id: groupId, title, resource_url: url, resource_type: 'LINK' })
+        }),
+    
+    getGlobalResources: (token: string) =>
+        apiCall<any[]>('/resources/global', { token, method: 'GET' }),
+
+    createGlobalResource: async (token: string, formData: FormData) => {
+        const response = await fetch(`${API_BASE}/resources/global`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
             body: formData
         });
         if (!response.ok) {
@@ -452,6 +461,8 @@ export const api = {
     // Guide Analytics & Bulk Approve
     getGuideAnalytics: (token: string) =>
         apiCall<any[]>('/analytics/guide', { token, method: 'GET' }),
+    getSystemStats: (token: string) =>
+        apiCall<any>('/analytics/system-stats', { token, method: 'GET' }),
         
     bulkApproveLogbooks: (token: string, logbookIds: string[]) =>
         apiCall<any>('/groups/logbooks/bulk-approve', {
@@ -466,25 +477,37 @@ export const api = {
             method: 'PATCH'
         }),
 
+    getMeetings: (token: string, groupId: string) =>
+        apiCall<any[]>(`/groups/${groupId}/meetings`, { token, method: 'GET' }),
+
+    createMeeting: (token: string, groupId: string, data: { title: string; scheduled_at: string; notes?: string; attendance?: string[] }) =>
+        apiCall<any>(`/guide/groups/${groupId}/meetings`, { token, method: 'POST', body: JSON.stringify(data) }),
+
+    updateMeetingAttendance: (token: string, groupId: string, meetingId: string, attendance: string[]) =>
+        apiCall<any>(`/guide/groups/${groupId}/meetings/${meetingId}/attendance`, { token, method: 'PUT', body: JSON.stringify({ attendance }) }),
+
+    getSignoffs: (token: string, groupId: string) =>
+        apiCall<any[]>(`/groups/${groupId}/signoffs`, { token, method: 'GET' }),
+
+    updateSignoff: (token: string, groupId: string, signoffId: string, status: string, remarks: string) =>
+        apiCall<any>(`/guide/groups/${groupId}/signoffs`, { token, method: 'POST', body: JSON.stringify({ milestone_id: signoffId, status, remarks }) }),
+
     // Coordinator Features
     getOrphanStudents: (token: string) =>
         apiCall<any[]>('/coordinator/action/orphans', { token, method: 'GET' }),
         
-    autoGroupOrphans: (token: string) =>
-        apiCall<any>('/coordinator/action/auto-group', {
-            token,
-            method: 'POST'
-        }),
-        
     getRubrics: (token: string) =>
         apiCall<any[]>('/rubrics', { token, method: 'GET' }),
         
-    saveRubric: (token: string, name: string, schema: any) =>
+    saveRubric: (token: string, name: string, schema: any, targetPhase: string = 'FINAL') =>
         apiCall<any>('/rubrics', {
             token,
             method: 'POST',
-            body: JSON.stringify({ name, schema })
+            body: JSON.stringify({ name, schema, target_phase: targetPhase })
         }),
+
+    deleteRubric: (token: string, rubricId: string) =>
+        apiCall<any>(`/rubrics/${rubricId}`, { token, method: 'DELETE' }),
 
     // Committee Features
     searchHistoricProjects: (token: string, title: string) =>
@@ -502,6 +525,9 @@ export const api = {
         }),
 
     getGroupPeerEvaluations: (token: string, groupId: string) =>
+        apiCall<any[]>(`/peer-evaluations/group/${groupId}`, { token, method: 'GET' }),
+
+    getGuideGroupPeerEvaluations: (token: string, groupId: string) =>
         apiCall<any[]>(`/peer-evaluations/group/${groupId}`, { token, method: 'GET' }),
 
     // Chat endpoints
@@ -524,6 +550,49 @@ export const api = {
             method: 'POST',
             body: JSON.stringify({ content })
         }),
+
+    broadcastAnnouncement: (token: string, message: string) =>
+        apiCall<any>('/chat/announcements', { token, method: 'POST', body: JSON.stringify({ content: message }) }),
+
+    getUnreadAnnouncementCount: async (token: string) =>
+        apiCall<{ count: number }>('/chat/announcements/unread-count', { token, method: 'GET' }),
+
+    getUnreadNotificationsCount: async (token: string) => {
+        const res = await fetch(`${API_BASE}/notifications/unread-count`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to get unread notifications count');
+        return res.json();
+    },
+
+    markNotificationRead: async (token: string, notificationId: string) => {
+        const res = await fetch(`${API_BASE}/notifications/${notificationId}/read`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to mark notification as read');
+        return res.json();
+    },
+
+    markAllNotificationsRead: async (token: string) => {
+        const res = await fetch(`${API_BASE}/notifications/read-all`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to mark all notifications as read');
+        return res.json();
+    },
+
+    getNotifications: async (token: string) => {
+        const res = await fetch(`${API_BASE}/notifications`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch notifications');
+        return res.json();
+    },
+
+    getBatchYearsCoordinator: async (token: string) =>
+        apiCall<{ years: number[] }>('/coordinator/action/batch-years', { token, method: 'GET' }),
 
     // --- Cron Tasks (Coordinator Only) ---
     triggerReminders: (token: string) =>

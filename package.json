@@ -7,7 +7,9 @@
     "setup": "npm install && npm install --prefix backend",
     "dev:frontend": "vite",
     "dev:backend": "npm run dev --prefix backend",
+    "dev:ml": "npm run dev:ml --prefix backend",
     "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:all": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\" \"npm run dev:ml\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -24,6 +26,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.3.0",
+    "dayjs": "^1.11.21",
     "framer-motion": "^12.39.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
@@ -33,7 +36,9 @@
     "react-hook-form": "^7.76.1",
     "react-router-dom": "^7.15.1",
     "recharts": "^3.8.1",
+    "socket.io-client": "^4.8.3",
     "tailwind-merge": "^3.6.0",
+    "xlsx": "^0.18.5",
     "zod": "^4.4.3",
     "zustand": "^5.0.13"
   },

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { exportYearlyReport, getOrphanStudents, autoGroupOrphans, getFacultyList, updateGuideWorkload, deleteUser } from '../controllers/coordinator.js';
+import { exportYearlyReport, getOrphanStudents, autoGroupOrphans, getFacultyList, updateGuideWorkload, deleteUser, getBatchYears } from '../controllers/coordinator.js';
 import { authenticateRequest, authorize } from '../middleware/auth.js';
 
 const router = Router();
@@ -14,5 +14,7 @@ router.post('/auto-group', autoGroupOrphans);
 router.get('/faculty', getFacultyList);
 router.patch('/faculty/:faculty_id/workload', updateGuideWorkload);
 router.delete('/users/:id', deleteUser);
+
+router.get('/batch-years', getBatchYears);
 
 export default router;

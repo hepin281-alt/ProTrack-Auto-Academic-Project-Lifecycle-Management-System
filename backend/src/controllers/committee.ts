@@ -20,7 +20,7 @@ export const searchHistoricProjects = async (req: Request, res: Response): Promi
             [`%${title}%`]
         );
         
-        res.json(result.rows);
+        res.json(result);
     } catch (error) {
         console.error('Error searching historic projects:', error);
         res.status(500).json({ error: 'Failed to search projects' });
