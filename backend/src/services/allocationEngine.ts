@@ -79,7 +79,8 @@ async function getMLSimilarities(sourceTags: string[], targetsTags: string[][]):
     if (sourceTags.length === 0) return targetsTags.map(() => 0.0);
     
     try {
-        const response = await fetch('http://127.0.0.1:8000/similarity', {
+        const mlServiceUrl = process.env.ML_SERVICE_URL || 'http://127.0.0.1:8000';
+        const response = await fetch(`${mlServiceUrl}/similarity`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
