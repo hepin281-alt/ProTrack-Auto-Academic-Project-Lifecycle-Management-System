@@ -5,6 +5,7 @@ import { api } from '../../lib/apiClient';
 import { Users, BookOpen, AlertOctagon, TrendingUp, Sparkles, Activity, Zap, Download, Filter, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import { BarChart, Bar, PieChart, Pie, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { motion } from 'framer-motion';
+import * as XLSX from 'xlsx';
 
 const COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b'];
 
@@ -135,33 +136,29 @@ export const CoordinatorDashboardNew: React.FC = () => {
  return;
  }
 
- // Create CSV header
- let csvContent ="Group ID,Project Title,Members,Evaluator,Phase,Total Score\n";
+ // Create Data Array for Excel
+ const exportData: any[] = [];
 
  // Process data
  evaluations.forEach((evalItem: any) => {
  const group = groups.find((g: any) => g.group_id === evalItem.group_id);
  if (group) {
- const safeTitle = `"${(group.project_title || '').replace(/"/g, '""')}"`;
- const safeMembers = group.member_count;
- const safePhase = evalItem.phase;
- const safeEvaluator = evalItem.evaluator_id;
- const safeScore = evalItem.total_marks;
- 
- csvContent += `${group.group_id.slice(0, 8)},${safeTitle},${safeMembers},${safeEvaluator},${safePhase},${safeScore}\n`;
+ exportData.push({
+ "Group ID": group.group_id,
+ "Group Name": group.group_name || evalItem.group_name || '',
+ "Members": group.member_count || 0,
+ "Evaluator": evalItem.evaluator_name || evalItem.evaluator_id || '',
+ "Phase": evalItem.phase || '',
+ "Total Score": evalItem.total_marks || 0
+ });
  }
  });
 
  // Trigger Download
- const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
- const url = window.URL.createObjectURL(blob);
- const a = document.createElement('a');
- a.href = url;
- a.download = `evaluations_export_${new Date().toISOString().split('T')[0]}.csv`;
- document.body.appendChild(a);
- a.click();
- window.URL.revokeObjectURL(url);
- document.body.removeChild(a);
+ const worksheet = XLSX.utils.json_to_sheet(exportData);
+ const workbook = XLSX.utils.book_new();
+ XLSX.utils.book_append_sheet(workbook, worksheet, "Evaluations");
+ XLSX.writeFile(workbook, `evaluations_export_${new Date().toISOString().split('T')[0]}.xlsx`);
 
  } catch (err) {
  console.error('Failed to export grades', err);
@@ -210,7 +207,7 @@ export const CoordinatorDashboardNew: React.FC = () => {
  onClick={handleExportGrades}
  className="px-4 py-2 bg-slate-800 border border-white/[0.08] text-white font-medium rounded-lg hover:bg-slate-700 transition-colors flex items-center gap-2"
  >
- <Activity className="w-4 h-4" /> Export Grades (CSV)
+ <Activity className="w-4 h-4" /> Export Grades (Excel)
  </button>
  </div>
  </div>
