@@ -248,67 +248,51 @@ app.use((err: { status?: number; message?: string }, _req: Request, res: Respons
 async function autoInitDb() {
     try {
         const { pool } = await import('./config/database.js');
-        // Check if the last table in init.sql exists to ensure full initialization
-        const result = await pool.query(`
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_schema = 'public' AND table_name = 'notification_reads'
-            )
-        `);
-        const tablesExist = result.rows[0].exists;
-        if (!tablesExist) {
-            console.log('🔧 Tables not found — running database initialization...');
-            const { readFileSync } = await import('fs');
-            const { join } = await import('path');
-            // Try multiple paths to handle both dev (src/) and prod (dist/) environments
-            const possiblePaths = [
-                join(__dirname, 'db', 'init.sql'),              // dist/db/init.sql (prod)
-                join(__dirname, '..', 'db', 'init.sql'),        // backend/db/init.sql
-                join(__dirname, '..', 'src', 'db', 'init.sql'), // backend/src/db/init.sql (dev)
-            ];
-            const sqlPath = possiblePaths.find(p => { try { readFileSync(p); return true; } catch { return false; } });
-            if (!sqlPath) throw new Error('init.sql not found in any expected path');
-            const sql = readFileSync(sqlPath, 'utf-8');
-            // pg cannot run multi-statement SQL in one call — run each statement individually
-            const client = await pool.connect();
-            try {
-                const statements = sql.split(';').map(s => s.trim()).filter(Boolean);
-                for (const statement of statements) {
-                    await client.query(statement);
-                }
-                console.log('✓ Database schema initialized successfully');
-                // Seed default coordinator account
-                const bcrypt = await import('bcryptjs');
-                const hash = await bcrypt.default.hash('admin123', 10);
-                await client.query(
-                    `INSERT INTO users (email, password_hash, role, full_name)
-                     VALUES ($1, $2, 'COORDINATOR', 'Admin Coordinator')
-                     ON CONFLICT (email) DO NOTHING`,
-                    ['admin@protrack.edu', hash]
-                );
-                console.log('✓ Default coordinator seeded: admin@protrack.edu / admin123');
-            } finally {
-                client.release();
-            }
-        } else {
-            console.log('✓ Database tables already exist');
-        }
-        // Always ensure default coordinator exists
+        const { readFileSync } = await import('fs');
+        const { join } = await import('path');
+
+        // Locate init.sql
+        const possiblePaths = [
+            join(__dirname, 'db', 'init.sql'),
+            join(__dirname, '..', 'src', 'db', 'init.sql'),
+        ];
+        const sqlPath = possiblePaths.find(p => { try { readFileSync(p); return true; } catch { return false; } });
+        if (!sqlPath) throw new Error('init.sql not found');
+
+        const sql = readFileSync(sqlPath, 'utf-8');
+        // init.sql uses IF NOT EXISTS everywhere — safe to run every startup
+        const statements = sql.split(';').map(s => s.trim()).filter(s => s.length > 0 && !s.startsWith('--'));
+
+        const client = await pool.connect();
         try {
-            const bcrypt = await import('bcryptjs');
-            const hash = await bcrypt.default.hash('admin123', 10);
-            await pool.query(
-                `INSERT INTO users (email, password_hash, role, full_name)
-                 VALUES ($1, $2, 'COORDINATOR', 'Admin Coordinator')
-                 ON CONFLICT (email) DO NOTHING`,
-                ['admin@protrack.edu', hash]
-            );
-            console.log('✓ Default coordinator ready: admin@protrack.edu / admin123');
-        } catch (seedErr) {
-            console.warn('⚠ Could not seed coordinator:', seedErr);
+            for (const statement of statements) {
+                try {
+                    await client.query(statement);
+                } catch (stmtErr: any) {
+                    // 42710 = duplicate_object (ENUM type already exists)
+                    // 42701 = duplicate_column (ALTER TABLE ADD COLUMN IF NOT EXISTS)
+                    if (stmtErr.code === '42710' || stmtErr.code === '42701') continue;
+                    console.warn(`⚠ Init SQL [${stmtErr.code}]: ${stmtErr.message}`);
+                }
+            }
+            console.log('✓ Database schema ready');
+        } finally {
+            client.release();
         }
+
+        // Always ensure default coordinator exists
+        const bcrypt = await import('bcryptjs');
+        const hash = await bcrypt.default.hash('admin123', 10);
+        await pool.query(
+            `INSERT INTO users (email, password_hash, role, full_name)
+             VALUES ($1, $2, 'COORDINATOR', 'Admin Coordinator')
+             ON CONFLICT (email) DO NOTHING`,
+            ['admin@protrack.edu', hash]
+        );
+        console.log('✓ Default coordinator ready: admin@protrack.edu / admin123');
+
     } catch (err) {
-        console.error('⚠ DB auto-init error:', err);
+        console.error('⚠ DB init error:', err);
     }
 }
 
