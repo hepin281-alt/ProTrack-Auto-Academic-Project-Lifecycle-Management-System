@@ -218,7 +218,7 @@ CREATE INDEX idx_chat_announcement ON chat_messages(is_announcement);
 
 -- Create group_resources table
 CREATE TABLE group_resources (
-    resource_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    resource_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     group_id UUID REFERENCES project_groups(group_id) ON DELETE CASCADE,
     title VARCHAR(100) NOT NULL,
     url VARCHAR(500),
