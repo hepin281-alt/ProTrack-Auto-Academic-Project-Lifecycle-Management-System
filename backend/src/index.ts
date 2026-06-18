@@ -260,7 +260,14 @@ async function autoInitDb() {
             console.log('🔧 Tables not found — running database initialization...');
             const { readFileSync } = await import('fs');
             const { join } = await import('path');
-            const sqlPath = join(__dirname, '..', 'db', 'init.sql');
+            // Try multiple paths to handle both dev (src/) and prod (dist/) environments
+            const possiblePaths = [
+                join(__dirname, 'db', 'init.sql'),       // dist/db/init.sql
+                join(__dirname, '..', 'db', 'init.sql'), // backend/db/init.sql
+                join(__dirname, '..', 'src', 'db', 'init.sql'), // backend/src/db/init.sql
+            ];
+            const sqlPath = possiblePaths.find(p => { try { readFileSync(p); return true; } catch { return false; } });
+            if (!sqlPath) throw new Error('init.sql not found in any expected path');
             const sql = readFileSync(sqlPath, 'utf-8');
             await pool.query(sql);
             console.log('✓ Database schema initialized successfully');
