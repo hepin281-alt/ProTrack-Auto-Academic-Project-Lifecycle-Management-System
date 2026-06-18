@@ -277,11 +277,35 @@ async function autoInitDb() {
                     await client.query(statement);
                 }
                 console.log('✓ Database schema initialized successfully');
+                // Seed default coordinator account
+                const bcrypt = await import('bcryptjs');
+                const hash = await bcrypt.default.hash('admin123', 10);
+                await client.query(
+                    `INSERT INTO users (email, password_hash, role, full_name)
+                     VALUES ($1, $2, 'COORDINATOR', 'Admin Coordinator')
+                     ON CONFLICT (email) DO NOTHING`,
+                    ['admin@protrack.edu', hash]
+                );
+                console.log('✓ Default coordinator seeded: admin@protrack.edu / admin123');
             } finally {
                 client.release();
             }
         } else {
             console.log('✓ Database tables already exist');
+        }
+        // Always ensure default coordinator exists
+        try {
+            const bcrypt = await import('bcryptjs');
+            const hash = await bcrypt.default.hash('admin123', 10);
+            await pool.query(
+                `INSERT INTO users (email, password_hash, role, full_name)
+                 VALUES ($1, $2, 'COORDINATOR', 'Admin Coordinator')
+                 ON CONFLICT (email) DO NOTHING`,
+                ['admin@protrack.edu', hash]
+            );
+            console.log('✓ Default coordinator ready: admin@protrack.edu / admin123');
+        } catch (seedErr) {
+            console.warn('⚠ Could not seed coordinator:', seedErr);
         }
     } catch (err) {
         console.error('⚠ DB auto-init error:', err);
