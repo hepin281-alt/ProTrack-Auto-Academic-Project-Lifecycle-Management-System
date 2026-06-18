@@ -1,4 +1,7 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+const API_BASE = import.meta.env.VITE_API_URL || 
+  (window.location.hostname === 'localhost' 
+    ? 'http://localhost:5001/api' 
+    : 'https://protrack-backend-hj8n.onrender.com/api');
 
 interface RequestOptions extends RequestInit {
     token?: string;
