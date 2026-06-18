@@ -248,11 +248,11 @@ app.use((err: { status?: number; message?: string }, _req: Request, res: Respons
 async function autoInitDb() {
     try {
         const { pool } = await import('./config/database.js');
-        // Check if users table exists
+        // Check if the last table in init.sql exists to ensure full initialization
         const result = await pool.query(`
             SELECT EXISTS (
                 SELECT FROM information_schema.tables 
-                WHERE table_schema = 'public' AND table_name = 'users'
+                WHERE table_schema = 'public' AND table_name = 'notification_reads'
             )
         `);
         const tablesExist = result.rows[0].exists;
