@@ -42,9 +42,19 @@ const PORT = process.env.PORT || 5001;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Allow any localhost port for CORS
+// Allow localhost, all vercel.app subdomains, and explicit CORS_ORIGIN
 const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
-const CORS_ORIGIN = /localhost/.test(corsOrigin) ? /localhost/ : corsOrigin;
+const CORS_ORIGIN = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+  if (!origin) return callback(null, true); // allow non-browser requests
+  if (
+    /localhost/.test(origin) ||
+    /\.vercel\.app$/.test(origin) ||
+    origin === corsOrigin
+  ) {
+    return callback(null, true);
+  }
+  return callback(new Error(`CORS blocked: ${origin}`));
+};
 
 // Socket.IO Server
 export const io = new SocketIOServer(httpServer, {
