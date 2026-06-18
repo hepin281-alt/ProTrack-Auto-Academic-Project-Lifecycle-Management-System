@@ -43,12 +43,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Allow only localhost and the specific production Vercel URL
-const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
 const ALLOWED_ORIGINS = [
-  corsOrigin,
+  'https://pro-track-auto-academic-project-lif.vercel.app',
+  process.env.CORS_ORIGIN, // optional extra origin from env
   'http://localhost:5173',
   'http://localhost:5001',
-];
+].filter(Boolean) as string[];
 const corsOptions: cors.CorsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     if (!origin) return callback(null, true); // allow non-browser requests (Postman, server-to-server)
