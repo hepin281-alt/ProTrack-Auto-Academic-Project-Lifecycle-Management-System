@@ -245,12 +245,41 @@ app.use((err: { status?: number; message?: string }, _req: Request, res: Respons
 });
 
 // ─── Server Bootstrap ─────────────────────────────────────────────────────────
+async function autoInitDb() {
+    try {
+        const { pool } = await import('./config/database.js');
+        // Check if users table exists
+        const result = await pool.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' AND table_name = 'users'
+            )
+        `);
+        const tablesExist = result.rows[0].exists;
+        if (!tablesExist) {
+            console.log('🔧 Tables not found — running database initialization...');
+            const { readFileSync } = await import('fs');
+            const { join } = await import('path');
+            const sqlPath = join(__dirname, '..', 'db', 'init.sql');
+            const sql = readFileSync(sqlPath, 'utf-8');
+            await pool.query(sql);
+            console.log('✓ Database schema initialized successfully');
+        } else {
+            console.log('✓ Database tables already exist');
+        }
+    } catch (err) {
+        console.error('⚠ DB auto-init error:', err);
+    }
+}
+
 async function startServer() {
     try {
         const dbConnected = await testConnection();
         if (!dbConnected) {
             console.warn('⚠ Warning: Database connection failed. Ensure PostgreSQL is running.');
             console.log('  Run: npm run db:init');
+        } else {
+            await autoInitDb();
         }
 
         httpServer.listen(PORT, () => {
