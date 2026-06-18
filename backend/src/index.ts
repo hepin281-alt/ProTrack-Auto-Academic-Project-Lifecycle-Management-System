@@ -262,15 +262,24 @@ async function autoInitDb() {
             const { join } = await import('path');
             // Try multiple paths to handle both dev (src/) and prod (dist/) environments
             const possiblePaths = [
-                join(__dirname, 'db', 'init.sql'),       // dist/db/init.sql
-                join(__dirname, '..', 'db', 'init.sql'), // backend/db/init.sql
-                join(__dirname, '..', 'src', 'db', 'init.sql'), // backend/src/db/init.sql
+                join(__dirname, 'db', 'init.sql'),              // dist/db/init.sql (prod)
+                join(__dirname, '..', 'db', 'init.sql'),        // backend/db/init.sql
+                join(__dirname, '..', 'src', 'db', 'init.sql'), // backend/src/db/init.sql (dev)
             ];
             const sqlPath = possiblePaths.find(p => { try { readFileSync(p); return true; } catch { return false; } });
             if (!sqlPath) throw new Error('init.sql not found in any expected path');
             const sql = readFileSync(sqlPath, 'utf-8');
-            await pool.query(sql);
-            console.log('✓ Database schema initialized successfully');
+            // pg cannot run multi-statement SQL in one call — run each statement individually
+            const client = await pool.connect();
+            try {
+                const statements = sql.split(';').map(s => s.trim()).filter(Boolean);
+                for (const statement of statements) {
+                    await client.query(statement);
+                }
+                console.log('✓ Database schema initialized successfully');
+            } finally {
+                client.release();
+            }
         } else {
             console.log('✓ Database tables already exist');
         }
