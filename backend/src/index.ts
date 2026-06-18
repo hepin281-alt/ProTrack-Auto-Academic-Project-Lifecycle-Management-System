@@ -49,13 +49,20 @@ const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:5001',
 ];
-const CORS_ORIGIN = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-  if (!origin) return callback(null, true); // allow non-browser requests (Postman, server-to-server)
-  if (/localhost/.test(origin) || ALLOWED_ORIGINS.includes(origin)) {
-    return callback(null, true);
-  }
-  return callback(new Error(`CORS blocked: ${origin}`));
+const corsOptions: cors.CorsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    if (!origin) return callback(null, true); // allow non-browser requests (Postman, server-to-server)
+    if (/localhost/.test(origin) || ALLOWED_ORIGINS.includes(origin)) {
+      return callback(null, true);
+    }
+    // Return false (403) instead of Error (500) for blocked origins
+    return callback(null, false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 };
+const CORS_ORIGIN = corsOptions.origin;
 
 // Socket.IO Server
 export const io = new SocketIOServer(httpServer, {
@@ -78,7 +85,8 @@ io.on('connection', (socket) => {
 });
 
 // ─── Middleware ────────────────────────────────────────────────────────────────
-app.use(cors({ origin: CORS_ORIGIN, credentials: true }));
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight OPTIONS requests
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
