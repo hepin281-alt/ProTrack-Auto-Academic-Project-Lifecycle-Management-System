@@ -20,7 +20,19 @@ services:
         value: production
       - key: CORS_ORIGIN
         value: "https://protrack-auto.vercel.app" # UPDATE THIS TO YOUR VERCEL URL
+      - key: ML_SERVICE_URL
+        value: "http://protrack-ml-service:8000"
     
+  - type: web
+    name: protrack-ml-service
+    env: docker
+    rootDir: backend/ml_service
+    plan: free
+    region: ohio
+    envVars:
+      - key: PORT
+        value: 8000
+
 databases:
   - name: protrack-db
     databaseName: protrack_production
