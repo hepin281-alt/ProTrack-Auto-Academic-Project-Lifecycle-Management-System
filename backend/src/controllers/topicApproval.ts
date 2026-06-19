@@ -91,7 +91,7 @@ export async function submitTopics(req: AuthenticatedRequest, res: Response): Pr
                 const updated = await query(
                     `UPDATE project_proposals
                      SET title=$1, abstract=$2, objectives=$3, domain_tags=$4, technology_stack=$5,
-                         approval_stage='PENDING', is_approved=false, updated_at=CURRENT_TIMESTAMP
+                         approval_stage='PENDING', status='PENDING', is_approved=false, updated_at=CURRENT_TIMESTAMP
                      WHERE proposal_id=$6
                      RETURNING *`,
                     [title.trim(), abstract || null, objectives || null, tags, stack, existing[0].proposal_id]
@@ -100,8 +100,8 @@ export async function submitTopics(req: AuthenticatedRequest, res: Response): Pr
             } else {
                 const inserted = await query(
                     `INSERT INTO project_proposals
-                        (group_id, title, abstract, objectives, domain_tags, technology_stack, priority, approval_stage, is_approved)
-                     VALUES ($1,$2,$3,$4,$5,$6,$7,'PENDING',false)
+                        (group_id, title, abstract, objectives, domain_tags, technology_stack, priority, approval_stage, status, is_approved)
+                     VALUES ($1,$2,$3,$4,$5,$6,$7,'PENDING','PENDING',false)
                      RETURNING *`,
                     [group_id, title.trim(), abstract || null, objectives || null, tags, stack, priority]
                 );
@@ -248,7 +248,7 @@ export async function reviewTopic(req: AuthenticatedRequest, res: Response): Pro
         // Update proposal stage
         await query(
             `UPDATE project_proposals
-             SET approval_stage = $1, is_approved = $2, updated_at = CURRENT_TIMESTAMP
+             SET approval_stage = $1, status = $1, is_approved = $2, updated_at = CURRENT_TIMESTAMP
              WHERE proposal_id = $3`,
             [newStage, decision === 'APPROVED', proposal_id]
         );
