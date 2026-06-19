@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import pool from '../config/database.js';
 import { authenticateRequest, authorize } from '../middleware/auth.js';
+import { handleDbError } from '../utils/dbError.js';
 
 const router = Router();
 
@@ -15,9 +16,8 @@ router.get('/announcements', authenticateRequest, async (req, res) => {
             ORDER BY c.created_at DESC
         `);
         res.json(rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Server error' });
+    } catch (error: any) {
+        handleDbError(error, res, 'fetch announcements', []);
     }
 });
 
@@ -38,9 +38,8 @@ router.post('/announcements', authenticateRequest, authorize('COORDINATOR'), asy
             [userId, content]
         );
         res.status(201).json(rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Server error' });
+    } catch (error: any) {
+        handleDbError(error, res, 'post announcement', {});
     }
 });
 
@@ -57,9 +56,8 @@ router.get('/group/:groupId', authenticateRequest, async (req, res) => {
             ORDER BY c.created_at ASC
         `, [groupId]);
         res.json(rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Server error' });
+    } catch (error: any) {
+        handleDbError(error, res, 'fetch group messages', []);
     }
 });
 
@@ -81,9 +79,8 @@ router.post('/group/:groupId', authenticateRequest, async (req, res) => {
             [groupId, userId, content]
         );
         res.status(201).json(rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Server error' });
+    } catch (error: any) {
+        handleDbError(error, res, 'post group message', {});
     }
 });
 
@@ -100,9 +97,8 @@ router.patch('/announcements/:message_id/read', authenticateRequest, async (req,
             [userId, message_id]
         );
         res.status(200).json({ success: true });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Server error' });
+    } catch (error: any) {
+        handleDbError(error, res, 'mark announcement as read', {});
     }
 });
 
@@ -123,9 +119,8 @@ router.get('/announcements/unread-count', authenticateRequest, async (req, res) 
             [userId]
         );
         res.json({ count: parseInt(rows[0].count, 10) });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Server error' });
+    } catch (error: any) {
+        handleDbError(error, res, 'fetch unread announcement count', { count: 0 });
     }
 });
 

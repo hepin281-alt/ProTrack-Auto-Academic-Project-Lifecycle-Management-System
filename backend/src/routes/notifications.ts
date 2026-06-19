@@ -1,6 +1,7 @@
 import express, { Response } from 'express';
 import { query } from '../config/database.js';
 import { authenticateRequest, AuthenticatedRequest } from '../middleware/auth.js';
+import { handleDbError } from '../utils/dbError.js';
 
 const router = express.Router();
 
@@ -15,9 +16,8 @@ router.get('/', async (req: AuthenticatedRequest, res: Response): Promise<void> 
             [userId]
         );
         res.status(200).json(result);
-    } catch (error) {
-        console.error('Get notifications error:', error);
-        res.status(500).json({ error: 'Failed to fetch notifications' });
+    } catch (error: any) {
+        handleDbError(error, res, 'fetch notifications', []);
     }
 });
 
@@ -30,9 +30,8 @@ router.get('/unread-count', async (req: AuthenticatedRequest, res: Response): Pr
             [userId]
         );
         res.status(200).json({ count: parseInt(result[0].count) });
-    } catch (error) {
-        console.error('Get notifications unread count error:', error);
-        res.status(500).json({ error: 'Failed to fetch notifications unread count' });
+    } catch (error: any) {
+        handleDbError(error, res, 'fetch notifications unread count', { count: 0 });
     }
 });
 
@@ -53,9 +52,8 @@ router.patch('/:id/read', async (req: AuthenticatedRequest, res: Response): Prom
         }
         
         res.status(200).json(result[0]);
-    } catch (error) {
-        console.error('Mark notification read error:', error);
-        res.status(500).json({ error: 'Failed to mark notification as read' });
+    } catch (error: any) {
+        handleDbError(error, res, 'mark notification as read', {});
     }
 });
 
@@ -70,9 +68,8 @@ router.post('/mark-all-read', async (req: AuthenticatedRequest, res: Response): 
         );
         
         res.status(200).json({ message: 'All notifications marked as read' });
-    } catch (error) {
-        console.error('Mark all notifications read error:', error);
-        res.status(500).json({ error: 'Failed to mark all notifications as read' });
+    } catch (error: any) {
+        handleDbError(error, res, 'mark all notifications as read', {});
     }
 });
 
