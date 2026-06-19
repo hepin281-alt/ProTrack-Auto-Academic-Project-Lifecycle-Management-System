@@ -1,32 +1,35 @@
 import { Router } from 'express';
 import multer from 'multer';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import { authenticateRequest } from '../middleware/auth.js';
-import fs from 'fs';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const uploadDir = path.join(__dirname, '../../uploads');
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-// Ensure upload directory exists
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (_req, file) => {
+    // Cloudinary natively determines formats, but we map common ones
+    let format = 'auto';
+    if (file.mimetype === 'application/pdf') format = 'pdf';
+    else if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') format = 'docx';
 
-// Configure multer storage
-const storage = multer.diskStorage({
-    destination: (_req, _file, cb) => {
-        cb(null, uploadDir);
-    },
-    filename: (_req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-    }
+    return {
+      folder: 'protrack_uploads',
+      format: format,
+      public_id: file.fieldname + '-' + Date.now() + '-' + Math.round(Math.random() * 1E9),
+      resource_type: 'auto' // Important for non-image files like PDFs/DOCX
+    };
+  },
 });
 
 const upload = multer({
-    storage,
+    storage: storage,
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
     fileFilter: (_req, file, cb) => {
         const allowedTypes = [
@@ -45,7 +48,6 @@ const upload = multer({
 
 const router = Router();
 
-// All routes require authentication
 router.use(authenticateRequest);
 
 router.post('/', upload.single('file'), (req, res) => {
@@ -55,8 +57,8 @@ router.post('/', upload.single('file'), (req, res) => {
             return;
         }
 
-        // Return the URL path to access the file
-        const fileUrl = `/uploads/${req.file.filename}`;
+        // Cloudinary returns the full URL in req.file.path
+        const fileUrl = req.file.path;
 
         res.status(200).json({
             message: 'File uploaded successfully',

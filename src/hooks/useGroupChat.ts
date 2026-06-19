@@ -2,8 +2,12 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 // Strip /api suffix to get the bare server origin for Socket.IO
-const SOCKET_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api')
-  .replace(/\/api\/?$/, '');
+const baseApiUrl = import.meta.env.VITE_API_URL || 
+  (window.location.hostname === 'localhost' 
+    ? 'http://localhost:5001/api' 
+    : 'https://protrack-backend-hj8n.onrender.com/api');
+    
+const SOCKET_URL = baseApiUrl.replace(/\/api\/?$/, '');
 
 let socket: Socket | null = null;
 

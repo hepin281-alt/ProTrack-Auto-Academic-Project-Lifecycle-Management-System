@@ -358,3 +358,15 @@ CREATE TABLE IF NOT EXISTS notification_reads (
     PRIMARY KEY (user_id, message_id)
 );
 CREATE INDEX IF NOT EXISTS idx_notification_reads_user ON notification_reads(user_id);
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id       UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    title         VARCHAR(255) NOT NULL,
+    message       TEXT NOT NULL,
+    type          VARCHAR(50) DEFAULT 'SYSTEM',
+    read          BOOLEAN DEFAULT FALSE,
+    link          VARCHAR(255),
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);

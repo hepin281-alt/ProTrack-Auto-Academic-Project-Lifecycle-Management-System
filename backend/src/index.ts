@@ -294,6 +294,7 @@ async function autoInitDb() {
 
     } catch (err) {
         console.error('⚠ DB init error:', err);
+        throw err; // Fail-hard to prevent zombie servers
     }
 }
 

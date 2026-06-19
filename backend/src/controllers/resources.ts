@@ -44,7 +44,7 @@ export const createResource = async (req: Request, res: Response): Promise<void>
 
         if (req.file) {
             resource_type = 'FILE';
-            file_path = `/uploads/${req.file.filename}`;
+            file_path = req.file.path; // Cloudinary full URL
         }
         
         const result = await query(
