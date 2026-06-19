@@ -3,6 +3,7 @@ import { query } from '../config/database.js';
 import { generateToken } from '../utils/jwt.js';
 import { hashPassword, comparePassword } from '../utils/password.js';
 import { parsePRN } from '../utils/prnParser.js';
+import { handleDbError } from '../utils/dbError.js';
 
 interface LoginRequest {
     email: string;
@@ -68,9 +69,8 @@ export async function login(req: Request, res: Response): Promise<void> {
             batch_year: user.batch_year || null,
             token
         });
-    } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ error: 'Login failed' });
+    } catch (error: any) {
+        handleDbError(error, res, 'login failed', {});
     }
 }
 
@@ -105,9 +105,8 @@ export async function getMe(req: Request & { user?: { user_id: string; role: str
             current_workload: u.current_workload || 0,
             max_workload: u.max_workload || 4,
         });
-    } catch (error) {
-        console.error('Get profile error:', error);
-        res.status(500).json({ error: 'Failed to fetch profile' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch profile', []);
     }
 }
 
@@ -192,9 +191,8 @@ export async function register(req: Request, res: Response): Promise<void> {
             batch_year: batch_year || parsePRN(prn_no || '').batch_year || null,
             token
         });
-    } catch (error) {
-        console.error('Registration error:', error);
-        res.status(500).json({ error: 'Registration failed' });
+    } catch (error: any) {
+        handleDbError(error, res, 'registration failed', {});
     }
 }
 
@@ -300,8 +298,7 @@ export async function claimAccount(req: Request, res: Response): Promise<void> {
         } else {
             res.status(400).json({ error: 'Invalid role. Claim is available for STUDENT, GUIDE, COMMITTEE, and COORDINATOR.' });
         }
-    } catch (error) {
-        console.error('Claim account error:', error);
-        res.status(500).json({ error: 'Failed to claim account' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to claim account', {});
     }
 }

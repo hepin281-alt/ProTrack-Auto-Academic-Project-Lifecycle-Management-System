@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { query } from '../config/database.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
+import { handleDbError } from '../utils/dbError.js';
 
 export async function createOrUpdateSchedule(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
@@ -35,9 +36,8 @@ export async function createOrUpdateSchedule(req: AuthenticatedRequest, res: Res
         }
 
         res.status(200).json({ message: 'Schedules created successfully', schedules: results });
-    } catch (error) {
-        console.error('Schedule error:', error);
-        res.status(500).json({ error: 'Failed to save schedule' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to save schedule', {});
     }
 }
 
@@ -65,9 +65,8 @@ export async function getSchedules(req: AuthenticatedRequest, res: Response): Pr
 
         const schedules = await query(sql, params);
         res.status(200).json(schedules);
-    } catch (error) {
-        console.error('Fetch schedules error:', error);
-        res.status(500).json({ error: 'Failed to fetch schedules' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch schedules', []);
     }
 }
 
@@ -108,8 +107,7 @@ export async function getSmartSlots(req: AuthenticatedRequest, res: Response): P
         }
         
         res.status(200).json({ slots: availableSlots });
-    } catch (error) {
-        console.error('Smart schedule error:', error);
-        res.status(500).json({ error: 'Failed to generate smart slots' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to generate smart slots', {});
     }
 }

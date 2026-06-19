@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { query } from '../config/database.js';
+import { handleDbError } from '../utils/dbError.js';
 
 export const exportYearlyReport = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -43,9 +44,8 @@ export const exportYearlyReport = async (req: Request, res: Response): Promise<v
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', 'attachment; filename=yearly_report.csv');
         res.send(csvContent);
-    } catch (error) {
-        console.error('Error exporting report:', error);
-        res.status(500).json({ error: 'Failed to export report' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to export report', {});
     }
 };
 
@@ -59,9 +59,8 @@ export const getOrphanStudents = async (req: Request, res: Response): Promise<vo
              WHERE m.group_id IS NULL AND u.role = 'STUDENT'`
         );
         res.json(result);
-    } catch (error) {
-        console.error('Error fetching orphan students:', error);
-        res.status(500).json({ error: 'Failed to fetch orphan students' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch orphan students', []);
     }
 };
 
@@ -112,9 +111,8 @@ export const autoGroupOrphans = async (req: Request, res: Response): Promise<voi
         }
 
         res.json({ message: 'Auto-grouping successful', groups_created: createdGroups });
-    } catch (error) {
-        console.error('Error in autoGroupOrphans:', error);
-        res.status(500).json({ error: 'Failed to auto-group orphans' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to auto-group orphans', {});
     }
 };
 
@@ -128,9 +126,8 @@ export const getFacultyList = async (req: Request, res: Response): Promise<void>
              ORDER BY u.full_name ASC`
         );
         res.json(result);
-    } catch (error) {
-        console.error('Error fetching faculty list:', error);
-        res.status(500).json({ error: 'Failed to fetch faculty list' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch faculty list', []);
     }
 };
 
@@ -155,9 +152,8 @@ export const updateGuideWorkload = async (req: Request, res: Response): Promise<
         }
 
         res.json({ message: 'Max workload updated successfully', profile: result[0] });
-    } catch (error) {
-        console.error('Error updating guide workload:', error);
-        res.status(500).json({ error: 'Failed to update guide workload' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to update guide workload', {});
     }
 };
 
@@ -185,12 +181,7 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
         
         res.status(200).json({ message: 'User deleted successfully' });
     } catch (error: any) {
-        console.error('Delete user error:', error);
-        if (error.code === '23503') { // Postgres foreign key violation
-            res.status(400).json({ error: 'Cannot delete user because they are assigned to a group or project.' });
-            return;
-        }
-        res.status(500).json({ error: 'Failed to delete user' });
+        handleDbError(error, res, 'failed to delete user', {});
     }
 };
 
@@ -200,8 +191,7 @@ export const getBatchYears = async (req: Request, res: Response): Promise<void> 
             `SELECT DISTINCT batch_year FROM student_profiles WHERE batch_year IS NOT NULL ORDER BY batch_year DESC`
         );
         res.json({ years: result.map((r: any) => r.batch_year) });
-    } catch (error) {
-        console.error('Error fetching batch years:', error);
-        res.status(500).json({ error: 'Failed to fetch batch years' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch batch years', []);
     }
 };

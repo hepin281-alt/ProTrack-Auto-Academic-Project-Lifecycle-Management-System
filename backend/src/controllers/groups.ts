@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { query } from '../config/database.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
+import { handleDbError } from '../utils/dbError.js';
 
 // Create a new group (Student role)
 export async function createGroup(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -48,9 +49,8 @@ export async function createGroup(req: AuthenticatedRequest, res: Response): Pro
             created_at: group.created_at,
             message: 'Group created successfully. You are added as leader.'
         });
-    } catch (error) {
-        console.error('Create group error:', error);
-        res.status(500).json({ error: 'Failed to create group' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to create group', {});
     }
 }
 
@@ -146,9 +146,8 @@ export async function getGroups(req: AuthenticatedRequest, res: Response): Promi
 
         const groups = await query(sql, params);
         res.status(200).json(groups);
-    } catch (error) {
-        console.error('Get groups error:', error);
-        res.status(500).json({ error: 'Failed to fetch groups' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch groups', []);
     }
 }
 
@@ -212,9 +211,8 @@ export async function getGroupById(req: AuthenticatedRequest, res: Response): Pr
             member_count: members.length,
             proposals
         });
-    } catch (error) {
-        console.error('Get group error:', error);
-        res.status(500).json({ error: 'Failed to fetch group' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch group', []);
     }
 }
 
@@ -263,9 +261,8 @@ export async function updateGroupStatus(req: AuthenticatedRequest, res: Response
             message: 'Group status updated',
             group: result[0]
         });
-    } catch (error) {
-        console.error('Update group status error:', error);
-        res.status(500).json({ error: 'Failed to update group status' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to update group status', {});
     }
 }
 

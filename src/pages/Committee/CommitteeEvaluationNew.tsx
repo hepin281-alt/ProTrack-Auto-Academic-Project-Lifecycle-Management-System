@@ -48,17 +48,17 @@ export const CommitteeEvaluationNew: React.FC = () => {
  try {
  setIsLoading(true);
  const [groups, evals, rubrics, schedules] = await Promise.all([
- api.getGroups(token, 'ACTIVE'),
- api.getEvaluations(token),
- api.getRubrics(token),
- api.getSchedules(token)
+ api.getGroups(token, 'ACTIVE').catch((err) => { console.error('getGroups failed:', err); return []; }),
+ api.getEvaluations(token).catch((err) => { console.error('getEvaluations failed:', err); return []; }),
+ api.getRubrics(token).catch((err) => { console.error('getRubrics failed:', err); return []; }),
+ api.getSchedules(token).catch((err) => { console.error('getSchedules failed:', err); return []; })
  ]);
  setActiveGroups(groups);
  setAllEvaluations(evals);
  setRubricTemplates(rubrics);
  setAllSchedules(schedules || []);
  } catch (error) {
- console.error("Failed to fetch evaluation data");
+ console.error('Failed to fetch evaluation data:', error);
  } finally {
  setIsLoading(false);
  }

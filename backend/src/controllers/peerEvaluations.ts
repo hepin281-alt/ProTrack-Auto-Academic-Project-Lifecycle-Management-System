@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { query } from '../config/database.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
+import { handleDbError } from '../utils/dbError.js';
 
 export async function submitEvaluation(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
@@ -20,19 +21,15 @@ export async function submitEvaluation(req: AuthenticatedRequest, res: Response)
              RETURNING *`,
             [group_id, evaluator_id, evaluatee_id, score, comments]
         );
-
         res.status(201).json(result[0]);
-    } catch (error) {
-        console.error('Submit peer evaluation error:', error);
-        res.status(500).json({ error: 'Failed to submit peer evaluation' });
+    } catch (error: any) {
+        handleDbError(error, res, 'submit peer evaluation', {});
     }
 }
 
 export async function getGroupEvaluations(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
         const { group_id } = req.params;
-        
-        // Return evaluations for this group, including full names
         const evaluations = await query(
             `SELECT p.*, u_tor.full_name as evaluator_name, u_tee.full_name as evaluatee_name
              FROM peer_evaluations p
@@ -41,11 +38,9 @@ export async function getGroupEvaluations(req: AuthenticatedRequest, res: Respon
              WHERE p.group_id = $1`,
             [group_id]
         );
-        
         res.status(200).json(evaluations);
-    } catch (error) {
-        console.error('Get peer evaluations error:', error);
-        res.status(500).json({ error: 'Failed to fetch peer evaluations' });
+    } catch (error: any) {
+        handleDbError(error, res, 'fetch peer evaluations', []);
     }
 }
 
@@ -56,7 +51,6 @@ export async function getGroupEvaluations(req: AuthenticatedRequest, res: Respon
 export async function getGroupEvaluationsSummary(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
         const { group_id } = req.params;
-
         const summary = await query(
             `SELECT
                pe.evaluatee_id,
@@ -70,10 +64,8 @@ export async function getGroupEvaluationsSummary(req: AuthenticatedRequest, res:
              ORDER BY avg_score DESC`,
             [group_id]
         );
-
         res.status(200).json(summary);
-    } catch (error) {
-        console.error('Get peer evaluations summary error:', error);
-        res.status(500).json({ error: 'Failed to fetch peer evaluations summary' });
+    } catch (error: any) {
+        handleDbError(error, res, 'fetch peer evaluations summary', []);
     }
 }

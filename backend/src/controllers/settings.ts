@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import { pool } from '../config/database.js';
+import { handleDbError } from '../utils/dbError.js';
 
 export const getSettings = async (req: Request, res: Response): Promise<void> => {
     try {
-        // Check if table exists first
+        // Check if table exists first (leaving this as a secondary check, but also relying on handleDbError for clean errors)
         const tableCheck = await pool.query(`
             SELECT EXISTS (
                 SELECT FROM information_schema.tables 
@@ -30,12 +31,7 @@ export const getSettings = async (req: Request, res: Response): Promise<void> =>
         }
         res.status(200).json(settings);
     } catch (error: any) {
-        console.error('Error fetching settings:', error);
-        res.status(500).json({ 
-            error: 'Failed to fetch settings',
-            message: error.message || 'Database error',
-            timestamp: new Date().toISOString()
-        });
+        handleDbError(error, res, 'fetch settings', {});
     }
 };
 
@@ -81,11 +77,6 @@ export const updateSettings = async (req: Request, res: Response): Promise<void>
             timestamp: new Date().toISOString()
         });
     } catch (error: any) {
-        console.error('Error updating settings:', error);
-        res.status(500).json({ 
-            error: 'Failed to update settings',
-            message: error.message || 'Database error',
-            timestamp: new Date().toISOString()
-        });
+        handleDbError(error, res, 'update settings', {});
     }
 };

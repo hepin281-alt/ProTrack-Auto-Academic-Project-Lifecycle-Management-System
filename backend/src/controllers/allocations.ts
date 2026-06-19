@@ -7,6 +7,7 @@ import {
     fetchAvailableGuides
 } from '../services/allocationEngine.js';
 import { sendGuideAssignedEmail } from '../utils/emailService.js';
+import { handleDbError } from '../utils/dbError.js';
 
 // ─── GET /allocation/pending ─────────────────────────────────────────────────
 export async function getPendingAllocation(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -33,9 +34,8 @@ export async function getPendingAllocation(req: AuthenticatedRequest, res: Respo
              ORDER BY g.created_at ASC`
         );
         res.status(200).json({ total_pending: groups.length, groups });
-    } catch (error) {
-        console.error('Get pending allocation error:', error);
-        res.status(500).json({ error: 'Failed to fetch pending groups' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch pending groups', { total_pending: 0, groups: [] });
     }
 }
 
@@ -44,9 +44,8 @@ export async function getAvailableGuides(req: AuthenticatedRequest, res: Respons
     try {
         const guides = await fetchAvailableGuides();
         res.status(200).json({ total_available: guides.length, guides });
-    } catch (error) {
-        console.error('Get available guides error:', error);
-        res.status(500).json({ error: 'Failed to fetch available guides' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch available guides', { total_available: 0, guides: [] });
     }
 }
 
@@ -57,9 +56,8 @@ export async function getRankedGuides(req: AuthenticatedRequest, res: Response):
         const { group_id } = req.params;
         const ranked = await rankGuidesForGroup(group_id);
         res.status(200).json({ group_id, ranked });
-    } catch (error) {
-        console.error('Rank guides error:', error);
-        res.status(500).json({ error: 'Failed to rank guides' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to rank guides', { group_id: req.params.group_id, ranked: [] });
     }
 }
 
@@ -148,9 +146,8 @@ export async function assignGuide(req: AuthenticatedRequest, res: Response): Pro
         }
 
         res.status(200).json({ message: 'Guide assigned successfully', group: updated[0] });
-    } catch (error) {
-        console.error('Assign guide error:', error);
-        res.status(500).json({ error: 'Failed to assign guide' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to assign guide', {});
     }
 }
 
@@ -184,9 +181,8 @@ export async function unassignGuide(req: AuthenticatedRequest, res: Response): P
         );
 
         res.status(200).json({ message: 'Guide unassigned', group_id });
-    } catch (error) {
-        console.error('Unassign guide error:', error);
-        res.status(500).json({ error: 'Failed to unassign guide' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to unassign guide', {});
     }
 }
 
@@ -205,9 +201,8 @@ export async function batchAllocate(req: AuthenticatedRequest, res: Response): P
             message: `Batch allocation complete. Assigned: ${assigned}, No guide available: ${skipped}`,
             results
         });
-    } catch (error) {
-        console.error('Batch allocate error:', error);
-        res.status(500).json({ error: 'Batch allocation failed' });
+    } catch (error: any) {
+        handleDbError(error, res, 'batch allocation failed', {});
     }
 }
 
@@ -240,9 +235,8 @@ export async function getAllocationAudit(req: AuthenticatedRequest, res: Respons
 
         const logs = await query(sql, params.length ? params : undefined);
         res.status(200).json({ logs });
-    } catch (error) {
-        console.error('Audit log error:', error);
-        res.status(500).json({ error: 'Failed to fetch audit logs' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch audit logs', { logs: [] });
     }
 }
 
@@ -258,9 +252,8 @@ export async function setGroupPreference(req: AuthenticatedRequest, res: Respons
             [preferred_guide_id || null, group_id]
         );
         res.status(200).json({ message: 'Preference saved', group_id, preferred_guide_id });
-    } catch (error) {
-        console.error('Set preference error:', error);
-        res.status(500).json({ error: 'Failed to save preference' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to save preference', {});
     }
 }
 
@@ -279,9 +272,8 @@ export async function submitGuideRating(req: AuthenticatedRequest, res: Response
             [guide_id, coordinator_id, rating, comments || null, academic_year || new Date().getFullYear().toString()]
         );
         res.status(201).json({ message: 'Rating saved' });
-    } catch (error) {
-        console.error('Submit rating error:', error);
-        res.status(500).json({ error: 'Failed to save rating' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to save rating', {});
     }
 }
 
@@ -296,9 +288,8 @@ export async function getGuideRatings(req: AuthenticatedRequest, res: Response):
              ORDER BY gr.created_at DESC`
         );
         res.status(200).json({ ratings });
-    } catch (error) {
-        console.error('Get ratings error:', error);
-        res.status(500).json({ error: 'Failed to fetch ratings' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch ratings', { ratings: [] });
     }
 }
 
@@ -315,8 +306,7 @@ export async function getGuideGroups(req: AuthenticatedRequest, res: Response): 
             [guide_id]
         );
         res.status(200).json({ guide_id, total_groups: groups.length, groups });
-    } catch (error) {
-        console.error('Get guide groups error:', error);
-        res.status(500).json({ error: 'Failed to fetch guide groups' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch guide groups', { guide_id: req.params.guide_id, total_groups: 0, groups: [] });
     }
 }

@@ -11,6 +11,7 @@ import { Response } from 'express';
 import { query } from '../config/database.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { sendTopicApprovalEmail } from '../utils/emailService.js';
+import { handleDbError } from '../utils/dbError.js';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -109,9 +110,8 @@ export async function submitTopics(req: AuthenticatedRequest, res: Response): Pr
         }
 
         res.status(201).json({ message: 'Topics submitted', proposals: results });
-    } catch (error) {
-        console.error('Submit topics error:', error);
-        res.status(500).json({ error: 'Failed to submit topics' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to submit topics', {});
     }
 }
 
@@ -151,9 +151,8 @@ export async function getGroupTopics(req: AuthenticatedRequest, res: Response): 
         );
 
         res.status(200).json({ group_id, proposals });
-    } catch (error) {
-        console.error('Get group topics error:', error);
-        res.status(500).json({ error: 'Failed to fetch topics' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch topics', { total: 0, proposals: [] });
     }
 }
 
@@ -195,9 +194,8 @@ export async function getPendingForStage(req: AuthenticatedRequest, res: Respons
 
         const proposals = await query(sql, params);
         res.status(200).json({ stage, total: proposals.length, proposals });
-    } catch (error) {
-        console.error('Get pending topics error:', error);
-        res.status(500).json({ error: 'Failed to fetch pending topics' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch pending topics', []);
     }
 }
 
@@ -294,9 +292,8 @@ export async function reviewTopic(req: AuthenticatedRequest, res: Response): Pro
             proposal: updatedProposal,
             new_stage: newStage
         });
-    } catch (error) {
-        console.error('Review topic error:', error);
-        res.status(500).json({ error: 'Failed to process review' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to process review', {});
     }
 }
 
@@ -340,9 +337,8 @@ export async function compareTopics(req: AuthenticatedRequest, res: Response): P
         }
 
         res.status(200).json({ results, count: results.length });
-    } catch (error) {
-        console.error('Compare topics error:', error);
-        res.status(500).json({ error: 'Failed to compare topics' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to compare topics', { results: [], count: 0 });
     }
 }
 
@@ -383,8 +379,7 @@ export async function getAllTopics(req: AuthenticatedRequest, res: Response): Pr
 
         const proposals = await query(sql, params.length ? params : undefined);
         res.status(200).json({ total: proposals.length, proposals });
-    } catch (error) {
-        console.error('Get all topics error:', error);
-        res.status(500).json({ error: 'Failed to fetch topics' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch topics', { total: 0, proposals: [] });
     }
 }

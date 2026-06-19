@@ -9,6 +9,7 @@
 import { Response } from 'express';
 import { query } from '../config/database.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
+import { handleDbError } from '../utils/dbError.js';
 import {
     generateMarksheet,
     generateBatchReport,
@@ -94,9 +95,8 @@ export async function getMarksheet(req: AuthenticatedRequest, res: Response): Pr
         const buf = await generateMarksheet(groupData, evaluations);
         const filename = `protrack_marksheet_${group_id.slice(0, 8)}.pdf`;
         sendPdf(res, buf, filename);
-    } catch (err) {
-        console.error('[Report] Marksheet error:', err);
-        res.status(500).json({ error: 'Failed to generate marksheet' });
+    } catch (error: any) {
+        handleDbError(error, res, 'generate marksheet', {});
     }
 }
 
@@ -145,9 +145,8 @@ export async function getBatchReport(req: AuthenticatedRequest, res: Response): 
 
         const buf = await generateBatchReport(groups, year);
         sendPdf(res, buf, `protrack_batch_report_${year}.pdf`);
-    } catch (err) {
-        console.error('[Report] Batch report error:', err);
-        res.status(500).json({ error: 'Failed to generate batch report' });
+    } catch (error: any) {
+        handleDbError(error, res, 'generate batch report', {});
     }
 }
 
@@ -162,7 +161,6 @@ export async function getComplianceReport(req: AuthenticatedRequest, res: Respon
                 g.group_name,
                 COALESCE(u.full_name, 'TBD') AS guide_name,
                 u.email                        AS guide_email,
-                -- total active weeks = number of distinct week_numbers in logbooks
                 COUNT(DISTINCT l.week_number)::int            AS weeks_active,
                 COUNT(l.log_id)::int                          AS logbooks_submitted,
                 SUM(CASE WHEN l.guide_status = 'APPROVED' THEN 1 ELSE 0 END)::int AS approved_count,
@@ -204,8 +202,7 @@ export async function getComplianceReport(req: AuthenticatedRequest, res: Respon
 
         const buf = await generateComplianceReport(records, year);
         sendPdf(res, buf, `protrack_compliance_${year}.pdf`);
-    } catch (err) {
-        console.error('[Report] Compliance report error:', err);
-        res.status(500).json({ error: 'Failed to generate compliance report' });
+    } catch (error: any) {
+        handleDbError(error, res, 'generate compliance report', {});
     }
 }

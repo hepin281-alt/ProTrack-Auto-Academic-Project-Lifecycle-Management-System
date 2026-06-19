@@ -56,8 +56,8 @@ export default function DocumentManagement() {
  setLoadingFiles(true);
  
  const [groupsData, docsData] = await Promise.all([
- api.getGroups(token!),
- api.getGlobalResources(token!)
+ api.getGroups(token!).catch((err) => { console.error('getGroups failed:', err); return []; }),
+ api.getGlobalResources(token!).catch((err) => { console.error('getGlobalResources failed:', err); return []; })
  ]);
  
  setGroups(groupsData);

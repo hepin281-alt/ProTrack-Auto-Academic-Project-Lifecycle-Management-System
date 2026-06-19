@@ -78,8 +78,8 @@ export const CoordinatorSchedules: React.FC = () => {
  try {
  setIsLoading(true);
  const [fetchedGroups, fetchedSchedules, fetchedSettings, fetchedMilestones, fetchedYears] = await Promise.all([
- api.getGroups(token, undefined, selectedBatchYear),
- api.getSchedules(token),
+ api.getGroups(token, undefined, selectedBatchYear).catch((err) => { console.error('getGroups failed:', err); return []; }),
+ api.getSchedules(token).catch((err) => { console.error('getSchedules failed:', err); return []; }),
  api.getSettings(token).catch(() => ({})),
  api.getMilestones(token, selectedBatchYear).catch(() => ({ milestones: [] })),
  api.getBatchYearsCoordinator(token).catch(() => ({ years: [] }))
@@ -101,7 +101,7 @@ export const CoordinatorSchedules: React.FC = () => {
      setSelectedBatchYear(years[0]);
  }
  } catch (error) {
- console.error("Failed to fetch scheduling data");
+ console.error("Failed to fetch scheduling data:", error);
  } finally {
  setIsLoading(false);
  }

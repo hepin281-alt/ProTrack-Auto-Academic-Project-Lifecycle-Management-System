@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { query } from '../config/database.js';
+import { handleDbError } from '../utils/dbError.js';
 
 export const getGlobalResources = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -11,9 +12,8 @@ export const getGlobalResources = async (req: Request, res: Response): Promise<v
              ORDER BY r.created_at DESC`
         );
         res.json(result);
-    } catch (error) {
-        console.error('Error fetching global resources:', error);
-        res.status(500).json({ error: 'Failed to fetch global resources' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch global resources', []);
     }
 };
 
@@ -29,9 +29,8 @@ export const getResources = async (req: Request, res: Response): Promise<void> =
             [group_id]
         );
         res.json(result);
-    } catch (error) {
-        console.error('Error fetching resources:', error);
-        res.status(500).json({ error: 'Failed to fetch resources' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch resources', []);
     }
 };
 
@@ -55,8 +54,7 @@ export const createResource = async (req: Request, res: Response): Promise<void>
             [group_id || null, title, url || null, user_id, resource_type, description || null, category || 'General', file_path]
         );
         res.status(201).json(result[0]);
-    } catch (error) {
-        console.error('Error creating resource:', error);
-        res.status(500).json({ error: 'Failed to create resource' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to create resource', {});
     }
 };

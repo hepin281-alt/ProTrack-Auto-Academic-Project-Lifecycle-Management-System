@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { pool } from '../config/database.js';
+import { handleDbError } from '../utils/dbError.js';
 
 export const getNote = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -36,12 +37,7 @@ export const getNote = async (req: Request, res: Response): Promise<void> => {
         
         res.status(200).json(result.rows[0] || { content: '' });
     } catch (error: any) {
-        console.error('Error fetching note:', error);
-        res.status(500).json({ 
-            error: 'Failed to fetch note',
-            message: error.message || 'Database error',
-            timestamp: new Date().toISOString()
-        });
+        handleDbError(error, res, 'notes operation', {});
     }
 };
 
@@ -106,11 +102,6 @@ export const saveNote = async (req: Request, res: Response): Promise<void> => {
             res.status(201).json(result.rows[0]);
         }
     } catch (error: any) {
-        console.error('Error saving note:', error);
-        res.status(500).json({ 
-            error: 'Failed to save note',
-            message: error.message || 'Database error',
-            timestamp: new Date().toISOString()
-        });
+        handleDbError(error, res, 'notes operation', {});
     }
 };

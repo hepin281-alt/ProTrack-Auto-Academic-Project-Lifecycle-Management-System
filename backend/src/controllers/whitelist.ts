@@ -5,6 +5,7 @@ import csvParser from 'csv-parser';
 import { Readable } from 'stream';
 import { sendWhitelistInvitationEmail } from '../utils/emailService.js';
 import xlsx from 'xlsx';
+import { handleDbError } from '../utils/dbError.js';
 
 export async function uploadWhitelist(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
@@ -39,9 +40,8 @@ export async function uploadWhitelist(req: AuthenticatedRequest, res: Response):
         } else {
             res.status(400).json({ error: 'Unsupported file type. Please upload a .csv or .xlsx file.' });
         }
-    } catch (error) {
-        console.error('Upload whitelist error:', error);
-        res.status(500).json({ error: 'Failed to process whitelist upload' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to process whitelist upload', {});
     }
 }
 
@@ -91,9 +91,8 @@ export async function getWhitelist(req: AuthenticatedRequest, res: Response): Pr
             'SELECT id, prn_no, email, full_name, is_claimed, created_at FROM student_whitelist ORDER BY created_at DESC'
         );
         res.status(200).json(whitelist);
-    } catch (error) {
-        console.error('Fetch whitelist error:', error);
-        res.status(500).json({ error: 'Failed to fetch whitelist' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch whitelist', []);
     }
 }
 
@@ -117,9 +116,8 @@ export async function addStudentToWhitelist(req: AuthenticatedRequest, res: Resp
         }
 
         res.status(201).json({ message: 'Student added to whitelist' });
-    } catch (error) {
-        console.error('Add student whitelist error:', error);
-        res.status(500).json({ error: 'Failed to add student to whitelist' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to add student to whitelist', {});
     }
 }
 
@@ -160,9 +158,8 @@ export async function uploadFacultyWhitelist(req: AuthenticatedRequest, res: Res
         } else {
             res.status(400).json({ error: 'Unsupported file type. Please upload a .csv or .xlsx file.' });
         }
-    } catch (error) {
-        console.error('Upload faculty whitelist error:', error);
-        res.status(500).json({ error: 'Failed to process faculty whitelist upload' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to process faculty whitelist upload', {});
     }
 }
 
@@ -214,9 +211,8 @@ export async function getFacultyWhitelist(req: AuthenticatedRequest, res: Respon
             'SELECT id, email, employee_id, full_name, role, is_claimed, created_at FROM faculty_whitelist ORDER BY created_at DESC'
         );
         res.status(200).json(whitelist);
-    } catch (error) {
-        console.error('Fetch faculty whitelist error:', error);
-        res.status(500).json({ error: 'Failed to fetch faculty whitelist' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch faculty whitelist', []);
     }
 }
 
@@ -246,9 +242,8 @@ export async function addFacultyToWhitelist(req: AuthenticatedRequest, res: Resp
         }
 
         res.status(201).json({ message: 'Faculty added to whitelist' });
-    } catch (error) {
-        console.error('Add faculty whitelist error:', error);
-        res.status(500).json({ error: 'Failed to add faculty to whitelist' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to add faculty to whitelist', {});
     }
 }
 
@@ -257,9 +252,8 @@ export async function deleteStudentFromWhitelist(req: AuthenticatedRequest, res:
         const { id } = req.params;
         await query('DELETE FROM student_whitelist WHERE id = $1', [id]);
         res.status(200).json({ message: 'Student removed from whitelist' });
-    } catch (error) {
-        console.error('Delete student whitelist error:', error);
-        res.status(500).json({ error: 'Failed to delete student from whitelist' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to delete student from whitelist', {});
     }
 }
 
@@ -268,8 +262,7 @@ export async function deleteFacultyFromWhitelist(req: AuthenticatedRequest, res:
         const { id } = req.params;
         await query('DELETE FROM faculty_whitelist WHERE id = $1', [id]);
         res.status(200).json({ message: 'Faculty removed from whitelist' });
-    } catch (error) {
-        console.error('Delete faculty whitelist error:', error);
-        res.status(500).json({ error: 'Failed to delete faculty from whitelist' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to delete faculty from whitelist', {});
     }
 }

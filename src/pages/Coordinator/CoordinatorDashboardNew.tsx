@@ -43,7 +43,7 @@ export const CoordinatorDashboardNew: React.FC = () => {
  try {
  setIsLoading(true);
  const [groupsData, complianceResponse, systemStats] = await Promise.all([
- api.getGroups(token),
+ api.getGroups(token).catch((err) => { console.error('getGroups failed:', err); return []; }),
  api.getLogbookCompliance(token).catch(() => null),
  api.getSystemStats(token).catch(() => null)
  ]);

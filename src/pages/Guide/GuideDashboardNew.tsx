@@ -243,70 +243,64 @@ export const GuideDashboardNew: React.FC = () => {
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
  {/* Logbooks Approved Bar Chart */}
  {analytics.length > 0 && (
- <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] overflow-hidden">
- <div className="p-5 border-b border-white/[0.08][0.06]">
- <h2 className="text-sm font-bold text-white flex items-center gap-2">
- <BarChart2 size={15} className="text-blue-400" />
- Approvals by Group
- </h2>
- </div>
- <div className="p-5 h-[250px] w-full">
- <ResponsiveContainer width="100%" height="100%">
- <BarChart data={analytics} margin={{ top: 10, right: 30, left: -20, bottom: 0 }}>
- <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
- <XAxis dataKey="group_name" stroke="rgba(255,255,255,0.5)" fontSize={10} tickLine={false} axisLine={false} />
- <YAxis stroke="rgba(255,255,255,0.5)" fontSize={10} tickLine={false} axisLine={false} allowDecimals={false} />
- <RechartsTooltip 
- cursor={{ fill: 'rgba(255,255,255,0.05)' }}
- contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
- />
- <Bar dataKey="approved_logbooks" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Approved Logbooks" />
- </BarChart>
- </ResponsiveContainer>
- </div>
- </div>
+  <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08]">
+  <div className="p-5 border-b border-white/[0.08]">
+  <h2 className="text-sm font-bold text-white flex items-center gap-2">
+  <BarChart2 size={15} className="text-blue-400" />
+  Approvals by Group
+  </h2>
+  </div>
+  <div className="px-5 pb-5 pt-2" style={{ height: 250 }}>
+  <ResponsiveContainer width="100%" height="100%">
+  <BarChart data={analytics} margin={{ top: 10, right: 30, left: -20, bottom: 0 }}>
+  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+  <XAxis dataKey="group_name" stroke="rgba(255,255,255,0.5)" fontSize={10} tickLine={false} axisLine={false} />
+  <YAxis stroke="rgba(255,255,255,0.5)" fontSize={10} tickLine={false} axisLine={false} allowDecimals={false} />
+  <RechartsTooltip 
+  cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+  contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+  />
+  <Bar dataKey="approved_logbooks" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Approved Logbooks" />
+  </BarChart>
+  </ResponsiveContainer>
+  </div>
+  </div>
  )}
 
  {/* Task Activity Area Chart */}
- <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] overflow-hidden">
- <div className="p-5 border-b border-white/[0.08][0.06]">
- <h2 className="text-sm font-bold text-white flex items-center gap-2">
- <Zap size={15} className="text-emerald-400" />
- Global Task Activity Burnup
- </h2>
- </div>
- <div className="p-5 h-[250px] w-full">
- {analytics.length > 0 ? (
- <ResponsiveContainer width="100%" height="100%">
- <AreaChart data={analytics} margin={{ top: 10, right: 30, left: -20, bottom: 0 }}>
- <defs>
- <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
- <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
- <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
- </linearGradient>
- <linearGradient id="colorPending" x1="0" y1="0" x2="0" y2="1">
- <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
- <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
- </linearGradient>
- </defs>
- <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
- <XAxis dataKey="week" stroke="#ffffff40" fontSize={12} tickLine={false} axisLine={false} />
- <YAxis stroke="#ffffff40" fontSize={12} tickLine={false} axisLine={false} />
- <RechartsTooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#ffffff20', borderRadius: '12px' }} itemStyle={{ color: '#fff' }} />
- <Area type="monotone" dataKey="completed" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorCompleted)" />
- <Area type="monotone" dataKey="pending" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorPending)" />
- </AreaChart>
- </ResponsiveContainer>
- ) : (
- <div className="flex items-center justify-center h-full text-white/50 text-sm">
- No analytics data available yet.
- </div>
+ {analytics.length > 0 && (
+  <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08]">
+  <div className="p-5 border-b border-white/[0.08]">
+  <h2 className="text-sm font-bold text-white flex items-center gap-2">
+  <Zap size={15} className="text-emerald-400" />
+  Global Task Activity Burnup
+  </h2>
+  </div>
+  <div className="px-5 pb-5 pt-2" style={{ height: 250 }}>
+  <ResponsiveContainer width="100%" height="100%">
+  <AreaChart data={analytics} margin={{ top: 10, right: 30, left: -20, bottom: 0 }}>
+  <defs>
+  <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+  </linearGradient>
+  <linearGradient id="colorPending" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
+  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+  </linearGradient>
+  </defs>
+  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+  <XAxis dataKey="week" stroke="#ffffff40" fontSize={12} tickLine={false} axisLine={false} />
+  <YAxis stroke="#ffffff40" fontSize={12} tickLine={false} axisLine={false} />
+  <RechartsTooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#ffffff20', borderRadius: '12px' }} itemStyle={{ color: '#fff' }} />
+  <Area type="monotone" dataKey="completed" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorCompleted)" />
+  <Area type="monotone" dataKey="pending" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorPending)" />
+  </AreaChart>
+  </ResponsiveContainer>
+  </div>
+  </div>
  )}
  </div>
- </div>
- </div>
-
-
 
  {/* Review Slide Panel */}
  {reviewPanel.isOpen && reviewPanel.logbook && (

@@ -50,8 +50,8 @@ export const CommitteeResults: React.FC = () => {
  try {
  setIsLoading(true);
  const [groups, evaluations] = await Promise.all([
- api.getGroups(token),
- api.getEvaluations(token)
+ api.getGroups(token).catch((err) => { console.error('getGroups failed:', err); return []; }),
+ api.getEvaluations(token).catch((err) => { console.error('getEvaluations failed:', err); return []; })
  ]);
 
  setAllEvaluations(evaluations);
@@ -64,11 +64,11 @@ export const CommitteeResults: React.FC = () => {
  ...e,
  group_name: groupMap.get(e.group_id) || 'Unknown Group'
  }))
- .sort((a, b) => b.total_marks - a.total_marks); // Sort descending
+ .sort((a, b) => b.total_marks - a.total_marks);
 
  setResults(phaseEvals);
  } catch (error) {
- console.error("Failed to fetch results", error);
+ console.error('Failed to fetch results:', error);
  } finally {
  setIsLoading(false);
  }

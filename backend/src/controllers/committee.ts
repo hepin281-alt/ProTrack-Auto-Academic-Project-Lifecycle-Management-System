@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { query } from '../config/database.js';
+import { handleDbError } from '../utils/dbError.js';
 
 export const searchHistoricProjects = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -8,7 +9,7 @@ export const searchHistoricProjects = async (req: Request, res: Response): Promi
             res.json([]);
             return;
         }
-        
+
         // Find projects with similar titles
         const result = await query(
             `SELECT p.proposal_id, p.title, p.created_at, g.group_name 
@@ -19,10 +20,8 @@ export const searchHistoricProjects = async (req: Request, res: Response): Promi
              LIMIT 5`,
             [`%${title}%`]
         );
-        
         res.json(result);
-    } catch (error) {
-        console.error('Error searching historic projects:', error);
-        res.status(500).json({ error: 'Failed to search projects' });
+    } catch (error: any) {
+        handleDbError(error, res, 'search historic projects', []);
     }
 };

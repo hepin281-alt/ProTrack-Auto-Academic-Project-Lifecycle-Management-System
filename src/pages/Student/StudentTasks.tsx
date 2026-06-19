@@ -38,8 +38,8 @@ export const StudentTasks: React.FC = () => {
  if (active) {
  setGroupId(active.group_id);
  const [groupTasks, groupMembers] = await Promise.all([
- api.getTasks(token, active.group_id),
- api.getMembers(token, active.group_id)
+ api.getTasks(token, active.group_id).catch((err) => { console.error('getTasks failed:', err); return []; }),
+ api.getMembers(token, active.group_id).catch((err) => { console.error('getMembers failed:', err); return []; })
  ]);
  setTasks(groupTasks);
  setMembers(groupMembers || []);
@@ -47,6 +47,7 @@ export const StudentTasks: React.FC = () => {
  setError('You do not have an active group to manage tasks.');
  }
  } catch (err) {
+ console.error('Failed to load tasks:', err);
  setError('Failed to load tasks');
  } finally {
  setIsLoading(false);

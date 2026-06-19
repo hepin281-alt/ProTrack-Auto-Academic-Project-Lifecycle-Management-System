@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { query } from '../config/database.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
+import { handleDbError } from '../utils/dbError.js';
 
 export async function getTasks(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
@@ -14,9 +15,8 @@ export async function getTasks(req: AuthenticatedRequest, res: Response): Promis
             [group_id]
         );
         res.status(200).json(tasks);
-    } catch (error) {
-        console.error('Fetch tasks error:', error);
-        res.status(500).json({ error: 'Failed to fetch tasks' });
+    } catch (error: any) {
+        handleDbError(error, res, 'fetch tasks', []);
     }
 }
 
@@ -30,9 +30,8 @@ export async function createTask(req: AuthenticatedRequest, res: Response): Prom
             [group_id, title, assigned_to || null]
         );
         res.status(201).json(result[0]);
-    } catch (error) {
-        console.error('Create task error:', error);
-        res.status(500).json({ error: 'Failed to create task' });
+    } catch (error: any) {
+        handleDbError(error, res, 'create task', {});
     }
 }
 
@@ -51,9 +50,8 @@ export async function updateTaskStatus(req: AuthenticatedRequest, res: Response)
             return;
         }
         res.status(200).json(result[0]);
-    } catch (error) {
-        console.error('Update task error:', error);
-        res.status(500).json({ error: 'Failed to update task' });
+    } catch (error: any) {
+        handleDbError(error, res, 'update task status', {});
     }
 }
 
@@ -65,8 +63,7 @@ export async function deleteTask(req: AuthenticatedRequest, res: Response): Prom
             [task_id]
         );
         res.status(200).json({ message: 'Task deleted' });
-    } catch (error) {
-        console.error('Delete task error:', error);
-        res.status(500).json({ error: 'Failed to delete task' });
+    } catch (error: any) {
+        handleDbError(error, res, 'delete task', {});
     }
 }

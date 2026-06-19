@@ -1,16 +1,22 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5001';
+// Strip /api suffix to get the bare server origin for Socket.IO
+const SOCKET_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api')
+  .replace(/\/api\/?$/, '');
 
 let socket: Socket | null = null;
 
 function getSocket(): Socket {
  if (!socket || !socket.connected) {
- socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
+ socket = io(SOCKET_URL, {
+   transports: ['websocket', 'polling'], // websocket first — Render supports native WS
+   autoConnect: true,
+ });
  }
  return socket;
 }
+
 
 export function useGroupChat(
  groupId: string,

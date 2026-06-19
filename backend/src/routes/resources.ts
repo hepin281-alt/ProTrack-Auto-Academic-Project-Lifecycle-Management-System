@@ -21,7 +21,8 @@ const upload = multer({ storage });
 const router = Router();
 
 router.use(authenticateRequest);
-router.get('/global/all', getGlobalResources);
+router.get('/global', getGlobalResources);
+router.post('/global', upload.single('file'), createResource);
 router.get('/:group_id', getResources);
 router.post('/', upload.single('file'), createResource);
 

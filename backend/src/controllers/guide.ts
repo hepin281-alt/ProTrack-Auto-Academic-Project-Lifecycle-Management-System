@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { query } from '../config/database.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { createGroupNotification } from '../utils/notifications.js';
+import { handleDbError } from '../utils/dbError.js';
 
 // ─── Meetings ─────────────────────────────────────────────────────────────────
 
@@ -13,9 +14,8 @@ export async function getMeetings(req: AuthenticatedRequest, res: Response): Pro
             [group_id]
         );
         res.status(200).json(meetings);
-    } catch (error) {
-        console.error('Get meetings error:', error);
-        res.status(500).json({ error: 'Failed to fetch meetings' });
+    } catch (error: any) {
+        handleDbError(error, res, 'fetch meetings', []);
     }
 }
 
@@ -45,9 +45,8 @@ export async function createMeeting(req: AuthenticatedRequest, res: Response): P
         );
 
         res.status(201).json(result[0]);
-    } catch (error) {
-        console.error('Create meeting error:', error);
-        res.status(500).json({ error: 'Failed to create meeting' });
+    } catch (error: any) {
+        handleDbError(error, res, 'create meeting', {});
     }
 }
 
@@ -60,16 +59,13 @@ export async function updateMeetingAttendance(req: AuthenticatedRequest, res: Re
             `UPDATE group_meetings SET attendance = $1 WHERE meeting_id = $2 RETURNING *`,
             [JSON.stringify(attendance), meeting_id]
         );
-
         if (result.length === 0) {
             res.status(404).json({ error: 'Meeting not found' });
             return;
         }
-
         res.status(200).json(result[0]);
-    } catch (error) {
-        console.error('Update attendance error:', error);
-        res.status(500).json({ error: 'Failed to update attendance' });
+    } catch (error: any) {
+        handleDbError(error, res, 'update meeting attendance', {});
     }
 }
 
@@ -83,9 +79,8 @@ export async function getSignoffs(req: AuthenticatedRequest, res: Response): Pro
             [group_id]
         );
         res.status(200).json(signoffs);
-    } catch (error) {
-        console.error('Get signoffs error:', error);
-        res.status(500).json({ error: 'Failed to fetch signoffs' });
+    } catch (error: any) {
+        handleDbError(error, res, 'fetch signoffs', []);
     }
 }
 
@@ -118,9 +113,8 @@ export async function updateSignoff(req: AuthenticatedRequest, res: Response): P
         );
 
         res.status(200).json(result[0]);
-    } catch (error) {
-        console.error('Update signoff error:', error);
-        res.status(500).json({ error: 'Failed to update signoff' });
+    } catch (error: any) {
+        handleDbError(error, res, 'update signoff', {});
     }
 }
 
@@ -136,32 +130,26 @@ export async function broadcastAnnouncement(req: AuthenticatedRequest, res: Resp
             return;
         }
 
-        // Find all active groups assigned to this guide
         const groups = await query(
             `SELECT group_id FROM project_groups WHERE guide_id = $1`,
             [sender_id]
         );
-
         if (groups.length === 0) {
             res.status(400).json({ error: 'No assigned groups to broadcast to' });
             return;
         }
 
-        // Insert announcement into chat_messages for every group
         const groupIds = groups.map((g: any) => g.group_id);
-        const promises = groupIds.map((groupId: string) => 
+        const promises = groupIds.map((groupId: string) =>
             query(
                 `INSERT INTO chat_messages (group_id, sender_id, content, is_announcement)
                  VALUES ($1, $2, $3, true)`,
                 [groupId, sender_id, content]
             )
         );
-
         await Promise.all(promises);
-
         res.status(201).json({ message: 'Announcement broadcasted successfully', groupCount: groupIds.length });
-    } catch (error) {
-        console.error('Broadcast announcement error:', error);
-        res.status(500).json({ error: 'Failed to broadcast announcement' });
+    } catch (error: any) {
+        handleDbError(error, res, 'broadcast announcement', {});
     }
 }

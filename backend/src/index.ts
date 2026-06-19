@@ -45,7 +45,8 @@ const __dirname = path.dirname(__filename);
 // Allow only localhost and the specific production Vercel URL
 const ALLOWED_ORIGINS = [
   'https://pro-track-auto-academic-project-lif.vercel.app',
-  process.env.CORS_ORIGIN, // optional extra origin from env
+  process.env.FRONTEND_URL,   // Render env var (preferred)
+  process.env.CORS_ORIGIN,    // legacy alias — keep for backward compat
   'http://localhost:5173',
   'http://localhost:5001',
 ].filter(Boolean) as string[];

@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { query } from '../config/database.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
+import { handleDbError } from '../utils/dbError.js';
 
 // Submit logbook entry (Student role)
 export async function submitLogbook(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -13,49 +14,30 @@ export async function submitLogbook(req: AuthenticatedRequest, res: Response): P
             return;
         }
 
-        // Check if group exists
-        const groups = await query(
-            'SELECT group_id FROM project_groups WHERE group_id = $1',
-            [group_id]
-        );
-
+        const groups = await query('SELECT group_id FROM project_groups WHERE group_id = $1', [group_id]);
         if (groups.length === 0) {
             res.status(404).json({ error: 'Group not found' });
             return;
         }
 
-        // Check if logbook for this week already exists
         const existing = await query(
-            `SELECT log_id FROM logbooks 
-             WHERE group_id = $1 AND week_number = $2`,
+            `SELECT log_id FROM logbooks WHERE group_id = $1 AND week_number = $2`,
             [group_id, week_number]
         );
-
         if (existing.length > 0) {
-            res.status(409).json({
-                error: 'Logbook entry for this week already exists',
-                log_id: existing[0].log_id
-            });
+            res.status(409).json({ error: 'Logbook entry for this week already exists', log_id: existing[0].log_id });
             return;
         }
 
-        // Create logbook entry
         const result = await query(
             `INSERT INTO logbooks (group_id, week_number, work_summary, evidence_url, guide_status) 
              VALUES ($1, $2, $3, $4, 'PENDING')
              RETURNING log_id, group_id, week_number, work_summary, evidence_url, guide_status, created_at`,
             [group_id, week_number, work_summary, evidence_url || null]
         );
-
-        const logbook = result[0];
-
-        res.status(201).json({
-            message: 'Logbook entry submitted',
-            logbook
-        });
-    } catch (error) {
-        console.error('Submit logbook error:', error);
-        res.status(500).json({ error: 'Failed to submit logbook' });
+        res.status(201).json({ message: 'Logbook entry submitted', logbook: result[0] });
+    } catch (error: any) {
+        handleDbError(error, res, 'submit logbook', {});
     }
 }
 
@@ -66,39 +48,22 @@ export async function getLogbooks(req: AuthenticatedRequest, res: Response): Pro
         const { status } = req.query;
 
         let sql = `
-            SELECT 
-                log_id,
-                group_id,
-                week_number,
-                work_summary,
-                evidence_url,
-                guide_status,
-                guide_remarks,
-                created_at,
-                updated_at
+            SELECT log_id, group_id, week_number, work_summary, evidence_url,
+                   guide_status, guide_remarks, created_at, updated_at
             FROM logbooks
             WHERE group_id = $1
         `;
-
         const params: unknown[] = [group_id];
-
         if (status) {
             sql += ' AND guide_status = $2';
             params.push(status as string);
         }
-
         sql += ' ORDER BY week_number DESC';
 
         const logbooks = await query(sql, params);
-
-        res.status(200).json({
-            group_id,
-            total_logbooks: logbooks.length,
-            logbooks
-        });
-    } catch (error) {
-        console.error('Get logbooks error:', error);
-        res.status(500).json({ error: 'Failed to fetch logbooks' });
+        res.status(200).json({ group_id, total_logbooks: logbooks.length, logbooks });
+    } catch (error: any) {
+        handleDbError(error, res, 'fetch logbooks', { group_id: req.params.group_id, total_logbooks: 0, logbooks: [] });
     }
 }
 
@@ -106,32 +71,19 @@ export async function getLogbooks(req: AuthenticatedRequest, res: Response): Pro
 export async function getLogbookById(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
         const { log_id } = req.params;
-
         const logbooks = await query(
-            `SELECT 
-                log_id,
-                group_id,
-                week_number,
-                work_summary,
-                evidence_url,
-                guide_status,
-                guide_remarks,
-                created_at,
-                updated_at
-             FROM logbooks
-             WHERE log_id = $1`,
+            `SELECT log_id, group_id, week_number, work_summary, evidence_url,
+                    guide_status, guide_remarks, created_at, updated_at
+             FROM logbooks WHERE log_id = $1`,
             [log_id]
         );
-
         if (logbooks.length === 0) {
             res.status(404).json({ error: 'Logbook not found' });
             return;
         }
-
         res.status(200).json(logbooks[0]);
-    } catch (error) {
-        console.error('Get logbook error:', error);
-        res.status(500).json({ error: 'Failed to fetch logbook' });
+    } catch (error: any) {
+        handleDbError(error, res, 'fetch logbook', {});
     }
 }
 
@@ -143,32 +95,20 @@ export async function approveLogbook(req: AuthenticatedRequest, res: Response): 
 
         const validStatuses = ['APPROVED', 'NEEDS_REVISION'];
         if (!validStatuses.includes(guide_status)) {
-            res.status(400).json({
-                error: `Invalid status. Must be: ${validStatuses.join(' or ')}`
-            });
+            res.status(400).json({ error: `Invalid status. Must be: ${validStatuses.join(' or ')}` });
             return;
         }
 
-        // Get current logbook status
-        const logbooks = await query(
-            'SELECT guide_status FROM logbooks WHERE log_id = $1',
-            [log_id]
-        );
-
+        const logbooks = await query('SELECT guide_status FROM logbooks WHERE log_id = $1', [log_id]);
         if (logbooks.length === 0) {
             res.status(404).json({ error: 'Logbook not found' });
             return;
         }
-
-        // Check if already approved (locked)
         if (logbooks[0].guide_status === 'APPROVED') {
-            res.status(409).json({
-                error: 'Logbook is already approved and locked. Cannot modify.'
-            });
+            res.status(409).json({ error: 'Logbook is already approved and locked. Cannot modify.' });
             return;
         }
 
-        // Update logbook
         const result = await query(
             `UPDATE logbooks 
              SET guide_status = $1, guide_remarks = $2, updated_at = CURRENT_TIMESTAMP
@@ -176,14 +116,12 @@ export async function approveLogbook(req: AuthenticatedRequest, res: Response): 
              RETURNING log_id, group_id, week_number, guide_status, guide_remarks, updated_at`,
             [guide_status, guide_remarks || null, log_id]
         );
-
         res.status(200).json({
             message: `Logbook ${guide_status === 'APPROVED' ? 'approved and locked' : 'marked for revision'}`,
             logbook: result[0]
         });
-    } catch (error) {
-        console.error('Approve logbook error:', error);
-        res.status(500).json({ error: 'Failed to approve logbook' });
+    } catch (error: any) {
+        handleDbError(error, res, 'approve logbook', {});
     }
 }
 
@@ -193,43 +131,24 @@ export async function updateLogbook(req: AuthenticatedRequest, res: Response): P
         const { log_id } = req.params;
         const { work_summary, evidence_url } = req.body;
 
-        // Get current logbook status
-        const logbooks = await query(
-            'SELECT guide_status FROM logbooks WHERE log_id = $1',
-            [log_id]
-        );
-
+        const logbooks = await query('SELECT guide_status FROM logbooks WHERE log_id = $1', [log_id]);
         if (logbooks.length === 0) {
             res.status(404).json({ error: 'Logbook not found' });
             return;
         }
-
-        // Check if approved (locked)
         if (logbooks[0].guide_status === 'APPROVED') {
-            res.status(409).json({
-                error: 'Logbook is approved and locked. Cannot modify.'
-            });
+            res.status(409).json({ error: 'Logbook is approved and locked. Cannot modify.' });
             return;
         }
 
         const updates: string[] = [];
         let paramCount = 1;
-
-        if (work_summary) {
-            updates.push(`work_summary = $${paramCount}`);
-            paramCount++;
-        }
-
-        if (evidence_url) {
-            updates.push(`evidence_url = $${paramCount}`);
-            paramCount++;
-        }
-
+        if (work_summary) { updates.push(`work_summary = $${paramCount}`); paramCount++; }
+        if (evidence_url) { updates.push(`evidence_url = $${paramCount}`); paramCount++; }
         if (updates.length === 0) {
             res.status(400).json({ error: 'No fields to update' });
             return;
         }
-
         updates.push(`updated_at = CURRENT_TIMESTAMP`);
 
         let sql = `UPDATE logbooks SET ${updates.join(', ')} WHERE log_id = $${paramCount}`;
@@ -241,16 +160,11 @@ export async function updateLogbook(req: AuthenticatedRequest, res: Response): P
         params.push(log_id);
 
         const result = await query(sql, params);
-
-        res.status(200).json({
-            message: 'Logbook updated',
-            logbook: result[0]
-        });
-    } catch (error) {
-        console.error('Update logbook error:', error);
-        res.status(500).json({ error: 'Failed to update logbook' });
+        res.status(200).json({ message: 'Logbook updated', logbook: result[0] });
+    } catch (error: any) {
+        handleDbError(error, res, 'update logbook', {});
     }
-};
+}
 
 export const bulkApproveLogbooks = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
@@ -259,18 +173,13 @@ export const bulkApproveLogbooks = async (req: AuthenticatedRequest, res: Respon
             res.status(400).json({ error: 'logbook_ids array is required' });
             return;
         }
-
         const result = await query(
-            `UPDATE logbooks 
-             SET guide_status = 'APPROVED', updated_at = CURRENT_TIMESTAMP
-             WHERE log_id = ANY($1) 
-             RETURNING *`,
+            `UPDATE logbooks SET guide_status = 'APPROVED', updated_at = CURRENT_TIMESTAMP
+             WHERE log_id = ANY($1) RETURNING *`,
             [logbook_ids]
         );
-
         res.json({ message: 'Logbooks approved successfully', count: result.length });
-    } catch (error) {
-        console.error('Error in bulkApproveLogbooks:', error);
-        res.status(500).json({ error: 'Failed to bulk approve logbooks' });
+    } catch (error: any) {
+        handleDbError(error, res, 'bulk approve logbooks', {});
     }
 };

@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { query } from '../config/database.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
+import { handleDbError } from '../utils/dbError.js';
 
 // Add member to group (must have 3-4 members)
 export async function addMember(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -73,9 +74,8 @@ export async function addMember(req: AuthenticatedRequest, res: Response): Promi
             roll_no: student.roll_no,
             is_leader: false
         });
-    } catch (error) {
-        console.error('Add member error:', error);
-        res.status(500).json({ error: 'Failed to add member' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to add member', {});
     }
 }
 
@@ -107,9 +107,8 @@ export async function getMembers(req: AuthenticatedRequest, res: Response): Prom
             total_members: members.length,
             members
         });
-    } catch (error) {
-        console.error('Get members error:', error);
-        res.status(500).json({ error: 'Failed to fetch members' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch members', []);
     }
 }
 
@@ -149,9 +148,8 @@ export async function removeMember(req: AuthenticatedRequest, res: Response): Pr
             message: 'Member removed from group',
             student_id
         });
-    } catch (error) {
-        console.error('Remove member error:', error);
-        res.status(500).json({ error: 'Failed to remove member' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to remove member', {});
     }
 }
 
@@ -185,9 +183,8 @@ export async function setLeader(req: AuthenticatedRequest, res: Response): Promi
             group_id,
             leader_id: student_id
         });
-    } catch (error) {
-        console.error('Set leader error:', error);
-        res.status(500).json({ error: 'Failed to set group leader' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to set group leader', {});
     }
 }
 
@@ -221,8 +218,7 @@ export async function getAvailableStudents(req: AuthenticatedRequest, res: Respo
         );
 
         res.status(200).json(students);
-    } catch (error) {
-        console.error('Get available students error:', error);
-        res.status(500).json({ error: 'Failed to fetch available students' });
+    } catch (error: any) {
+        handleDbError(error, res, 'failed to fetch available students', []);
     }
 }

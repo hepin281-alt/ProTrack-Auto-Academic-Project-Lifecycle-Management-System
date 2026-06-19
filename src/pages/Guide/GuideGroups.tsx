@@ -77,8 +77,8 @@ export const GuideGroups: React.FC = () => {
  setIsLoadingDetails(true);
  try {
  const [mList, tList] = await Promise.all([
- api.getMembers(token, group.group_id),
- api.getTasks(token, group.group_id)
+ api.getMembers(token, group.group_id).catch((err) => { console.error('getMembers failed:', err); return []; }),
+ api.getTasks(token, group.group_id).catch((err) => { console.error('getTasks failed:', err); return []; })
  ]);
  setMembers(Array.isArray(mList) ? mList : []);
  setTasks(Array.isArray(tList) ? tList : []);
