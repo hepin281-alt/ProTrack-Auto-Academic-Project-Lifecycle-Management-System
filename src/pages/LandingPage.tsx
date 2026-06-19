@@ -613,25 +613,7 @@ const LandingPage: React.FC = () => {
  </button>
  </form>
 
- {activeRole?.demo && (
- <div className="mt-6 p-4 bg-white/5/[0.03] border border-white/[0.06] rounded-2xl">
- <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-3">Demo Credentials</p>
- <div className="space-y-2 font-mono text-xs">
- <div className="flex justify-between gap-3">
- <span className="text-white/40">Email</span>
- <button type="button" onClick={() => { setEmail(activeRole.demo.email); setPassword(activeRole.demo.password); }} className="text-purple-400 hover:text-purple-300 truncate transition-colors">{activeRole.demo.email}</button>
- </div>
- <div className="flex justify-between gap-3">
- <span className="text-white/40">Password</span>
- <span className="text-white/60">{activeRole.demo.password}</span>
- </div>
- </div>
- <button type="button" onClick={() => { setEmail(activeRole.demo.email); setPassword(activeRole.demo.password); }}
- className="w-full mt-3 py-2 text-xs font-bold uppercase tracking-widest border border-white/[0.08] hover:border-white/20 rounded-xl text-white/50 hover:text-white transition-all">
- ↑ Auto-fill credentials
- </button>
- </div>
- )}
+
 
  <div className="mt-5 text-center">
  <p className="text-sm text-white/40">
