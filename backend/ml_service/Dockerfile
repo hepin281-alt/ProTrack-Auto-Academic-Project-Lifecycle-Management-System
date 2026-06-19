@@ -8,5 +8,5 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
 COPY . .
 
-# Hugging Face Spaces expose port 7860 by default
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
+# Updated to bind to PORT environment variable for Render compatibility
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
