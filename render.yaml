@@ -22,7 +22,15 @@ services:
         value: "https://protrack-auto.vercel.app" # UPDATE THIS TO YOUR VERCEL URL
       - key: ML_SERVICE_URL
         value: "http://protrack-ml-service:8000"
-    
+      - key: SMTP_HOST
+        value: "smtp.gmail.com"
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        value: "hepin281@gmail.com"
+      - key: SMTP_PASS
+        value: "ptpj pmdk qdqx carj"
+
   - type: web
     name: protrack-ml-service
     env: docker
